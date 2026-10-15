@@ -1,0 +1,10 @@
+.property-create-photo{min-width:0;margin:20px 0}
+.property-create-photo .clean-inset{margin:0 0 10px}
+.property-create-photo .field{min-width:0}
+.property-create-photo .field input[type=file]{width:100%;max-width:100%;min-width:0;font-size:14px;white-space:normal}
+.property-create-photo .field input[type=file]::file-selector-button{min-height:44px;max-width:100%;margin:0 10px 4px 0;padding:8px 12px;border:1px solid #bdcbd4;border-radius:7px;background:white;color:#1a3548;font:inherit;cursor:pointer}
+.property-create-photo img{display:block;margin:12px 0;border-radius:8px;background:#fff}
+.property-create-photo .button{min-height:44px;white-space:normal}
+.property-create-photo-help{font-size:13px;line-height:1.6}
+.property-create-fields{border:0;padding:0;margin:0;min-width:0}
+@media(max-width:640px){.property-create-photo .button{width:100%}.property-create-photo .field input[type=file]{font-size:16px}.property-create-photo .field input[type=file]::file-selector-button{display:block;margin-right:0}.property-create-fields>.two-col{grid-template-columns:1fr}}

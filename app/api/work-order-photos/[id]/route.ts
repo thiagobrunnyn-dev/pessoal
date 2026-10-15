@@ -1,0 +1,5 @@
+import {getOperator} from '../../../../lib/app-access';
+import {first,bucket,noCache} from '../../../../lib/maintenance';
+import {sanitizePhoto} from '../../../../lib/photo-privacy';
+export const dynamic='force-dynamic';
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){try{const op=await getOperator();if(!op)return new Response('Acesso restrito',{status:401,headers:noCache});const {id}=await params;const p=await first('SELECT p.object_key,p.content_type FROM work_order_photos p JOIN work_orders w ON w.id=p.work_order_id AND w.owner_id=p.owner_id WHERE p.id=? AND p.owner_id=?',id,op.ownerId);if(!p)return new Response('Foto não encontrada',{status:404,headers:noCache});const object=await bucket().get(p.object_key);if(!object)return new Response('Foto indisponível',{status:404,headers:noCache});return new Response(sanitizePhoto(await object.arrayBuffer(),p.content_type).buffer as ArrayBuffer,{headers:{...noCache,'Content-Type':p.content_type,'Content-Disposition':'inline'}});}catch{return new Response('Foto indisponível',{status:503,headers:noCache});}}

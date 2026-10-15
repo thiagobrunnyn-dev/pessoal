@@ -1,0 +1,8 @@
+import {currentPropertyDetails} from '../../../lib/property-front-photo-data';
+import {applyCorrection} from '../../../lib/corrections';
+import {getOperator,recheckOperator} from '../../../lib/app-access';
+import {noCache,clean} from '../../../lib/maintenance';
+import {boundedJson,requireSameOrigin,RequestError} from '../../../lib/http-security';
+export const dynamic='force-dynamic';const reply=(d:unknown,status=200)=>Response.json(d,{status,headers:noCache});
+export async function GET(request:Request){try{const op=await getOperator();if(!op)return reply({error:'Acesso restrito à gestão.'},401);const id=new URL(request.url).searchParams.get('id')||'';const details=await currentPropertyDetails(op,id);return reply({...details,canEdit:details.can_edit_numbers});}catch(e){return reply({error:e instanceof RequestError?e.message:'Não foi possível consultar a ficha do imóvel.'},e instanceof RequestError?e.status:503);}}
+export async function POST(request:Request){try{const op=await getOperator();if(!op)return reply({error:'Acesso restrito à gestão.'},401);requireSameOrigin(request);const b=await boundedJson(request);await recheckOperator(op);return reply(await applyCorrection(op,{entity:'property_point',id:b.property_id,expected_revision:b.expected_revision,request_id:b.request_id,reason:clean(b.reason,1000)||'Atualização do ponto do imóvel pelo usuário',confirmed:true,values:{latitude:b.latitude,longitude:b.longitude,accuracy_m:b.accuracy_m}}));}catch(e){return reply({error:e instanceof RequestError?e.message:'Não foi possível salvar as coordenadas.'},e instanceof RequestError?e.status:503);}}

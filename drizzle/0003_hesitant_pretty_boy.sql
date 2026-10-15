@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance` ADD `is_test` integer DEFAULT 0 NOT NULL;

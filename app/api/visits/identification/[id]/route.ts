@@ -1,0 +1,5 @@
+import {sanitizePhoto} from '../../../../../lib/photo-privacy';
+import {getVisit} from '../../../../../lib/visit-security';
+import {first,bucket,noCache} from '../../../../../lib/maintenance';
+export const dynamic='force-dynamic';
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{const {id}=await params;const visit=await getVisit(request,id);if(!visit)return new Response('Acesso restrito',{status:401,headers:noCache});const item=await first('SELECT identification_photo_key,identification_photo_type FROM equipment WHERE id=? AND owner_id=?',visit.equipment_id,visit.owner_id);if(!item?.identification_photo_key)return new Response('Foto não encontrada',{status:404,headers:noCache});const photo=await bucket().get(item.identification_photo_key);if(!photo)return new Response('Foto indisponível',{status:404,headers:noCache});return new Response(sanitizePhoto(await photo.arrayBuffer(),item.identification_photo_type).buffer as ArrayBuffer,{headers:{...noCache,'Content-Type':item.identification_photo_type,'Content-Disposition':'inline'}});}catch{return new Response('Foto indisponível',{status:503,headers:noCache});}}

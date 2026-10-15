@@ -1,0 +1,15 @@
+import {Bell,ArrowUpRight,ClipboardList} from 'lucide-react';
+import {INTAKE_STATUSES} from '../../lib/request-intake-model';
+import type {HubRequestRow,RequestStatus} from '../../lib/hub-requests';
+export default function HubRequests({rows,loading,query}:{rows:HubRequestRow[]|undefined;loading:boolean;query:string}){
+ const link=(kind:string,status='',alert='')=>{const q=new URLSearchParams(query);q.set('overview','1');q.set('kind',kind);if(status)q.set('status',status);if(alert)q.set('alert',alert);return '/solicitacoes?'+q;};
+ return <section className="hub-requests" aria-label="Solicitações de manutenção e orçamentos" aria-busy={loading}>
+ <div className="hub-requests-heading"><h2><ClipboardList size={20}/>Solicitações recebidas</h2><a href={'/solicitacoes?'+new URLSearchParams(query)+(query?'&':'')+'overview=1'}>Ver solicitações <ArrowUpRight size={16}/></a></div>
+ {!rows?<p className="hub-chart-empty" role="status">{loading?'Consultando solicitações…':'Solicitações indisponíveis. Atualize o resumo.'}</p>:<div className="hub-request-grid">{rows.map(row=>{const statuses:RequestStatus[]=row.kind==='maintenance'?['received','reviewing','linked_order','closed']:['received','reviewing','approved','closed'];return <article className="hub-request-card" key={row.kind}>
+ <div className="hub-chart-header"><h3>{row.kind==='maintenance'?'Solicitações de manutenção':'Compras / orçamentos'}</h3><a className="hub-chart-total" href={link(row.kind)} aria-label={'Ver '+row.total+' solicitações de '+(row.kind==='maintenance'?'manutenção':'compras / orçamentos')}><strong>{row.total}</strong><span>solicitações</span></a></div>
+ <div className="hub-request-statuses">{statuses.map(status=><a key={status} href={link(row.kind,status)}><span>{INTAKE_STATUSES[status]}</span><strong>{row.statuses[status]}</strong></a>)}</div>
+ {row.total===0?<p className="hub-request-note">Nenhuma solicitação neste recorte.</p>:<div className="hub-request-alerts" aria-label="Alertas das solicitações">{row.statuses.received>0&&<a href={link(row.kind,'received')}><Bell size={16}/><span>{row.statuses.received} recebida{row.statuses.received===1?'':'s'} para análise</span><ArrowUpRight size={15}/></a>}{row.past_due>0&&<a className="hub-request-late" href={link(row.kind,'','past_due')}><Bell size={16}/><span>{row.past_due} com data necessária passada</span><ArrowUpRight size={15}/></a>}{row.due_today>0&&<a href={link(row.kind,'','due_today')}><Bell size={16}/><span>{row.due_today} com data necessária hoje</span><ArrowUpRight size={15}/></a>}{!row.statuses.received&&!row.past_due&&!row.due_today&&<p className="hub-request-note">Sem alertas neste recorte.</p>}</div>}
+ </article>;})}</div>}
+ <p className="hub-request-note">Orçamentos aparecem pelos pedidos de compra. Alertas de data usam somente a data necessária informada em pedidos não encerrados. Solicitações encaminhadas para OS não são somadas novamente aos serviços pendentes.{query?' O recorte considera imóveis vinculados e conferidos.':' Pedidos ainda sem vínculo aparecem apenas para a gestão global.'}</p>
+ </section>;
+}

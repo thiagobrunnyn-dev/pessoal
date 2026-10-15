@@ -1,0 +1,14 @@
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+/icons/*
+  Cache-Control: public, max-age=86400
+  X-Content-Type-Options: nosniff
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/mobiliza-logo-0cff20bedde7.jpeg
+  Cache-Control: public, max-age=31536000, immutable

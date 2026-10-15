@@ -1,0 +1,4 @@
+import {startIntakeSession,GUEST_HEADERS} from '../../../../../lib/request-intake-public';
+import {boundedJson,requireSameOrigin,RequestError} from '../../../../../lib/http-security';
+export const dynamic='force-dynamic';
+export async function POST(request:Request,{params}:{params:Promise<{kind:string}>}){try{requireSameOrigin(request);const body=await boundedJson(request,128);if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)throw new RequestError('Formato inválido.');const r=await startIntakeSession(request,(await params).kind);return Response.json(r.data,{headers:{...GUEST_HEADERS,'Set-Cookie':r.cookie}});}catch(e){return Response.json({error:e instanceof RequestError?e.message:'Não foi possível preparar o envio.'},{status:e instanceof RequestError?e.status:503,headers:GUEST_HEADERS});}}

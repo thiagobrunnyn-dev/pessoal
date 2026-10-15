@@ -1,0 +1,2 @@
+.cadastro-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.cadastro-grid .module-card{min-width:0}.cadastro-grid h2{margin-bottom:12px}.cadastro-grid .cadastro-restricted{font-size:14px;margin:0;flex:none;padding:12px 0;color:var(--muted)}
+@media(max-width:760px){.cadastro-grid{grid-template-columns:minmax(0,1fr)}.cadastro-grid .module-icon{margin-bottom:15px}.cadastro-grid .module-card{padding:20px}.cadastro-grid .module-card>p{margin-bottom:18px}.cadastro-grid .module-card>.button{min-height:46px}}

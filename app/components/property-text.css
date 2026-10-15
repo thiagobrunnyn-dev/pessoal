@@ -1,0 +1,4 @@
+.property-sheet>.page-title h1,.property-location :is(h2,h3,dt,.button,.text-button,.field>span),.property-characteristics dd,.property-create-fields :is(h3,legend,.field>span,.button),.property-uppercase-form :is(h2,.field>span,.button,.confirm>span){text-transform:uppercase}
+.property-uppercase-value{overflow-wrap:anywhere}
+
+.property-create-fields select,.property-uppercase-form select,.property-create-fields input[name="name"]::placeholder,.property-create-fields textarea[name="address"]::placeholder{text-transform:uppercase}

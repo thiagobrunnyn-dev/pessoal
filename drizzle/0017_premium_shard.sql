@@ -1,0 +1,1 @@
+ALTER TABLE `clients` ADD `entity_type` text DEFAULT 'external_client' NOT NULL;

@@ -1,0 +1,1092 @@
+[
+  {
+    "path": "control",
+    "title": "Centrais e imóveis",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Imóveis, equipamentos e manutenção. GET sem id lista os cadastros; com id retorna a ficha do equipamento.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "action",
+      "address",
+      "baseline_date",
+      "bathrooms",
+      "bedrooms",
+      "brand_model",
+      "catalog_client_id",
+      "catalog_status",
+      "checklist",
+      "checklist_results",
+      "confirmed",
+      "declared_slots",
+      "equipment_id",
+      "equipment_revision",
+      "evidence_note",
+      "evidence_pending",
+      "executor_profile_id",
+      "expected_revision",
+      "front_photo",
+      "identification_photo",
+      "is_test",
+      "location",
+      "name",
+      "notes",
+      "photos",
+      "property_id",
+      "property_level",
+      "property_type",
+      "reason",
+      "record_id",
+      "request_id",
+      "responsible",
+      "serial",
+      "service_date",
+      "service_time",
+      "state_code",
+      "worksite_id"
+    ],
+    "actions": [
+      "checklist_settings",
+      "classify_maintenance",
+      "edit_equipment",
+      "equipment",
+      "identification_photo",
+      "maintenance",
+      "property"
+    ]
+  },
+  {
+    "path": "cleaning",
+    "title": "Limpeza",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Locais, rotinas e registros de limpeza. GET com id retorna o local.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "action",
+      "bed",
+      "catalog",
+      "confirmed",
+      "destination",
+      "executor_profile_id",
+      "expected_revision",
+      "frequency",
+      "location_id",
+      "location_revision",
+      "name",
+      "notes",
+      "photo_phases",
+      "placed",
+      "progress",
+      "property_id",
+      "reason",
+      "removed",
+      "request_id",
+      "responsible",
+      "results",
+      "service_date",
+      "service_time",
+      "washing_status"
+    ],
+    "actions": [
+      "catalog",
+      "location",
+      "property",
+      "record"
+    ]
+  },
+  {
+    "path": "handovers",
+    "title": "Entregas, clientes e centros de custo",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Cadastro de clientes, centros de custo, entregas e devoluções.",
+    "query": [],
+    "fields": [
+      "action",
+      "client_id",
+      "cost_center_id",
+      "delivered_on",
+      "entity_type",
+      "executor_profile_id",
+      "expected_revision",
+      "id",
+      "level",
+      "name",
+      "property_id",
+      "request_id",
+      "returned_on",
+      "slots"
+    ],
+    "actions": [
+      "client",
+      "cost_center",
+      "handover",
+      "return"
+    ]
+  },
+  {
+    "path": "client-catalog",
+    "title": "Catálogo de clientes",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Consulta clientes e centros de custo ativos.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "vehicles",
+    "title": "Veículos",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Lista paginada: page começa em 0; continue enquanto has_more for true. status: active, archived ou all. Detalhe por id; history=yes inclui até 100 eventos.",
+    "query": [
+      "history",
+      "id",
+      "page",
+      "q",
+      "status"
+    ],
+    "fields": [
+      "action",
+      "brand",
+      "confirmed",
+      "expected_revision",
+      "id",
+      "model",
+      "plate",
+      "reason",
+      "request_id",
+      "state_code",
+      "year"
+    ],
+    "actions": [
+      "archive",
+      "create",
+      "restore",
+      "update"
+    ]
+  },
+  {
+    "path": "people",
+    "title": "Pessoas",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Cadastro de colaboradores. registry=guests seleciona hóspedes. A API preserva as regras de identificação e de vínculo do sistema.",
+    "query": [
+      "registry"
+    ],
+    "fields": [
+      "action",
+      "app_member_user_id",
+      "confirmed",
+      "directory",
+      "id",
+      "name_pending",
+      "normalize",
+      "supervisor_ref",
+      "to"
+    ],
+    "actions": [
+      "archive",
+      "create",
+      "restore",
+      "update"
+    ]
+  },
+  {
+    "path": "occupancy",
+    "title": "Ocupação",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Quartos, vagas, entradas, saídas e histórico.",
+    "query": [
+      "client_id",
+      "cost_center_id",
+      "from",
+      "property_id",
+      "report",
+      "room_id",
+      "stay_id",
+      "to"
+    ],
+    "fields": [
+      "action",
+      "capacity",
+      "capacity_confirmed",
+      "confirmed",
+      "entry_on",
+      "entry_unknown",
+      "exit_on",
+      "expected_revision",
+      "name",
+      "person_profile_id",
+      "person_revision",
+      "planned_exit_on",
+      "property_id",
+      "property_revision",
+      "request_id",
+      "room_id",
+      "shift",
+      "slot_number",
+      "stay_id",
+      "to"
+    ],
+    "actions": [
+      "check_in",
+      "check_out",
+      "plan_checkout",
+      "room_create",
+      "room_update"
+    ]
+  },
+  {
+    "path": "mobilizations",
+    "title": "Mobilizações",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Preparação e execução de mobilizações, com itens e evidências.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "category",
+      "checked",
+      "client_id",
+      "confirmed",
+      "cost_center_id",
+      "environment_id",
+      "equipment",
+      "id",
+      "kind",
+      "label",
+      "layout",
+      "level",
+      "link_confirmed",
+      "note",
+      "planned",
+      "property_id",
+      "refresh_snapshot",
+      "resume_preparation",
+      "single_beds",
+      "size",
+      "stage",
+      "status"
+    ],
+    "actions": [
+      "create",
+      "item_update",
+      "link_handover",
+      "structure_update",
+      "update"
+    ]
+  },
+  {
+    "path": "work-orders",
+    "title": "Ordens de serviço",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Lista e ficha de ordens, registros de execução e evidências.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "action",
+      "client_id",
+      "closed_on",
+      "confirmed",
+      "cost_center_id",
+      "description",
+      "executor_profile_id",
+      "expected_version",
+      "id",
+      "note",
+      "opened_on",
+      "origin",
+      "priority",
+      "property_id",
+      "refresh_snapshot",
+      "request_id",
+      "responsible",
+      "size",
+      "status"
+    ],
+    "actions": [
+      "correct",
+      "create",
+      "update"
+    ]
+  },
+  {
+    "path": "service-providers",
+    "title": "Prestadores",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Cadastro, edição, arquivamento e restauração de prestadores. values contém os dados cadastrais.",
+    "query": [
+      "id",
+      "view"
+    ],
+    "fields": [
+      "action",
+      "address",
+      "confirmed",
+      "email",
+      "id",
+      "name",
+      "phone",
+      "request_id",
+      "revision",
+      "scope_states",
+      "services",
+      "tax_registration",
+      "technical_responsible",
+      "values"
+    ],
+    "actions": [
+      "archive",
+      "create",
+      "restore",
+      "update"
+    ]
+  },
+  {
+    "path": "property-services",
+    "title": "Serviços e laudos",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Serviços por imóvel, laudos e anexos.",
+    "query": [
+      "id",
+      "kind",
+      "property_id",
+      "summary",
+      "view"
+    ],
+    "fields": [
+      "area",
+      "certificate_number",
+      "confirmed",
+      "due_confirmed",
+      "due_on",
+      "make_current",
+      "notes",
+      "performed_on",
+      "property_id",
+      "provider_id",
+      "responsible",
+      "service_kind"
+    ],
+    "actions": [
+      "archive",
+      "create",
+      "current",
+      "restore",
+      "update"
+    ]
+  },
+  {
+    "path": "guest-requests",
+    "title": "Solicitações dos imóveis",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Consulta e tratamento das solicitações recebidas pelo canal dos imóveis.",
+    "query": [
+      "cursor",
+      "id",
+      "kind",
+      "property_id",
+      "status"
+    ],
+    "fields": [
+      "action",
+      "audience_confirmed",
+      "category",
+      "company",
+      "confirmed",
+      "contact",
+      "cost_center",
+      "description",
+      "id",
+      "items",
+      "job_title",
+      "location",
+      "name",
+      "note",
+      "order_id",
+      "privacy_version",
+      "property_id",
+      "request_id",
+      "revision",
+      "scores",
+      "unable_to_photo"
+    ],
+    "actions": [
+      "close",
+      "link_order",
+      "reopen",
+      "review"
+    ]
+  },
+  {
+    "path": "request-intakes",
+    "title": "Solicitações gerais",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Consulta e triagem das solicitações gerais. Permissão de escrita inclui as ações de aprovação previstas no módulo.",
+    "query": [
+      "alert",
+      "cursor",
+      "id",
+      "kind",
+      "mine",
+      "overview",
+      "status"
+    ],
+    "fields": [
+      "action",
+      "address",
+      "client_id",
+      "confirmed",
+      "cost_center_id",
+      "id",
+      "location",
+      "name",
+      "note",
+      "order_id",
+      "property_id",
+      "request_id",
+      "responsible_user_id",
+      "revision",
+      "state_code"
+    ],
+    "actions": [
+      "approve_purchase",
+      "assign",
+      "close",
+      "link_order",
+      "reopen",
+      "responsible",
+      "review"
+    ]
+  },
+  {
+    "path": "mural",
+    "title": "Mural de documentos",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Documentos PDF, novas versões e histórico. document_id consulta versões.",
+    "query": [
+      "document_id",
+      "offset",
+      "property_id",
+      "view"
+    ],
+    "fields": [
+      "action",
+      "category",
+      "confirmed",
+      "document_id",
+      "expected_revision",
+      "id",
+      "object_key",
+      "original_name",
+      "owner_id",
+      "page_count",
+      "pdf",
+      "property_id",
+      "reason",
+      "request_id",
+      "sha",
+      "size",
+      "title"
+    ],
+    "actions": [
+      "archive",
+      "create",
+      "replace",
+      "restore",
+      "update"
+    ]
+  },
+  {
+    "path": "property-furniture",
+    "title": "Mobília dos imóveis",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Inventário de mobília, itens e evidências.",
+    "query": [
+      "property_id",
+      "history",
+      "mobilization_id"
+    ],
+    "fields": [
+      "confirmed",
+      "size"
+    ],
+    "actions": [
+      "item_update",
+      "structure_update"
+    ]
+  },
+  {
+    "path": "property-inspections",
+    "title": "Vistorias",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Vistorias, checklist e fotos. Assinaturas pessoais continuam no aplicativo.",
+    "query": [
+      "property_id",
+      "id",
+      "sources",
+      "mobilization_id",
+      "version"
+    ],
+    "fields": [
+      "action",
+      "request_id",
+      "confirmed",
+      "property_id",
+      "id",
+      "expected_version",
+      "payload",
+      "note",
+      "photos",
+      "photo_meta",
+      "source_photo_links"
+    ],
+    "actions": [
+      "create",
+      "update"
+    ]
+  },
+  {
+    "path": "property-location",
+    "title": "Ficha e localização do imóvel",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "GET exige id. POST altera coordenadas do imóvel e exige controle de revisão.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "accuracy_m",
+      "expected_revision",
+      "latitude",
+      "longitude",
+      "property_id",
+      "reason",
+      "request_id"
+    ],
+    "actions": []
+  },
+  {
+    "path": "property-front-photo",
+    "title": "Foto de fachada",
+    "methods": [
+      "POST"
+    ],
+    "body": "multipart/form-data",
+    "description": "Adiciona ou substitui foto da fachada conforme as validações do cadastro.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "operations",
+    "title": "Planejamento e conferência",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Consulta descritores e salva planejamento ou conferência operacional.",
+    "query": [
+      "id",
+      "kind",
+      "routine",
+      "type"
+    ],
+    "fields": [
+      "confirmed",
+      "decision",
+      "due",
+      "id",
+      "kind",
+      "reason",
+      "request",
+      "responsible",
+      "routine",
+      "source",
+      "to",
+      "type",
+      "version"
+    ],
+    "actions": []
+  },
+  {
+    "path": "corrections",
+    "title": "Correções e histórico",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Consulta registro revisável e aplica correções com motivo e revisão esperada.",
+    "query": [
+      "before_revision",
+      "entity",
+      "id"
+    ],
+    "fields": [
+      "accuracy_m",
+      "address",
+      "bed",
+      "caretaker_profile_id",
+      "catalog",
+      "catalog_client_id",
+      "checklist",
+      "client_id",
+      "confirmed",
+      "cost_center_id",
+      "delivered_on",
+      "destination",
+      "duvets",
+      "entity",
+      "entity_type",
+      "executor_profile_id",
+      "expected_revision",
+      "frequency",
+      "id",
+      "is_test",
+      "latitude",
+      "level",
+      "linens",
+      "longitude",
+      "name",
+      "notes",
+      "pillowcases",
+      "placed",
+      "progress",
+      "property_id",
+      "property_type",
+      "reason",
+      "refresh_snapshot",
+      "removed",
+      "request_id",
+      "required",
+      "responsible",
+      "returned_on",
+      "service_date",
+      "service_time",
+      "sheets",
+      "slots",
+      "state_code",
+      "values",
+      "washing_status",
+      "worksite_id"
+    ],
+    "actions": []
+  },
+  {
+    "path": "archive",
+    "title": "Arquivo de cadastros",
+    "methods": [
+      "GET",
+      "POST",
+      "DELETE"
+    ],
+    "body": "application/json",
+    "description": "GET: entity e id consultam revisão e impedimentos. list=1 lista arquivados; continue com nextOffset até null. POST restaura ou arquiva. DELETE arquiva sem apagar o histórico. entity: property, equipment, cleaning_location, client ou cost_center.",
+    "query": [
+      "entity",
+      "id",
+      "list",
+      "offset"
+    ],
+    "fields": [
+      "action",
+      "confirmed",
+      "entity",
+      "expected_revision",
+      "id",
+      "reason",
+      "request_id"
+    ],
+    "actions": [
+      "archive",
+      "restore"
+    ]
+  },
+  {
+    "path": "hub",
+    "title": "Resumo geral",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Resumo dos módulos e indicadores do painel.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "today",
+    "title": "Tarefas de hoje",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Tarefas, previsões e conferências.",
+    "query": [
+      "offset",
+      "responsible",
+      "search",
+      "source",
+      "view"
+    ],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "dashboard-metrics",
+    "title": "Indicadores",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Métricas por período e filtros operacionais.",
+    "query": [
+      "date",
+      "period"
+    ],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "localities/cities",
+    "title": "Municípios",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Catálogo de municípios para uma UF.",
+    "query": [
+      "state_code"
+    ],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-imports",
+    "title": "Importação de imóveis",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Preparação, validação e aplicação de lote de imóveis.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "action",
+      "batch_id",
+      "commit_token",
+      "confirmed",
+      "document",
+      "id",
+      "owner_id",
+      "position",
+      "request_id",
+      "review_hash",
+      "selected_row_ids",
+      "status"
+    ],
+    "actions": [
+      "confirm",
+      "preview"
+    ]
+  },
+  {
+    "path": "occupancy/import",
+    "title": "Importação de ocupação",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Planejamento e aplicação de importação de ocupantes.",
+    "query": [
+      "id"
+    ],
+    "fields": [
+      "action",
+      "confirmed",
+      "houses",
+      "id",
+      "plan",
+      "row",
+      "state",
+      "to"
+    ],
+    "actions": [
+      "preview",
+      "step"
+    ]
+  },
+  {
+    "path": "mobilization-item-photos",
+    "title": "Fotos de itens da mobilização",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Consulta fotos vinculadas a um item.",
+    "query": [
+      "id",
+      "item_id"
+    ],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-furniture-item-photos",
+    "title": "Fotos de itens da mobília",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Consulta fotos vinculadas a um item do inventário.",
+    "query": [
+      "property_id",
+      "furniture_id",
+      "item_id"
+    ],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "equipment-photo/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "cleaning/photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "handovers/{id}/property-details",
+    "title": "Ficha da entrega",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "people/photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-front-photo/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "work-order-photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "mobilization-photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-furniture-photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-inspection-photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "property-service-files/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "guest-request-photos/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "request-intake-files/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  },
+  {
+    "path": "mural/files/{id}",
+    "title": "Arquivo protegido",
+    "methods": [
+      "GET"
+    ],
+    "body": "none",
+    "description": "Use o identificador retornado pelo respectivo módulo. Respostas de arquivo conservam seu Content-Type.",
+    "query": [],
+    "fields": [],
+    "actions": []
+  }
+]
