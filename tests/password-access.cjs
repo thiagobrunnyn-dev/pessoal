@@ -92,13 +92,14 @@ const providerAccounts = new Map([[unlinked.email, unlinked]]);
 const providerTokens = new Map();
 const uncertainEmail = 'pending@example.test';
 const occupiedEmail = 'occupied@example.test';
+const redirectedEmail = 'redirected@example.test';
 let adminCalls = 0;
 let passwordUpdates = 0;
 
 async function mockSupabase(url, init) {
   const endpoint = new URL(url);
   assert.equal(endpoint.origin, env.MOBILIZA_SUPABASE_URL);
-  assert.equal(init.redirect, 'error');
+  assert.equal(init.redirect, 'manual');
   const key = init.headers.get('apikey');
   const body = init.body && JSON.parse(init.body);
   if (endpoint.pathname === '/auth/v1/admin/users') {
@@ -119,6 +120,9 @@ async function mockSupabase(url, init) {
   if (endpoint.pathname === '/auth/v1/token') {
     assert.equal(endpoint.searchParams.get('grant_type'), 'password');
     assert.equal(init.method, 'POST');
+    if (body.email === redirectedEmail) {
+      return Response.redirect('https://untrusted.example.test/token', 307);
+    }
     const account = providerAccounts.get(body.email);
     if (!account || account.password !== body.password) return Response.json({}, { status: 400 });
     const token = `synthetic.${providerTokens.size}.signature`;
@@ -192,6 +196,11 @@ async function check() {
     assert.equal((await create(createRequest({ ...staff, email: occupiedEmail }))).status, 409);
     assert.equal(member(occupiedEmail), undefined);
 
+    const redirectedRequest = loginRequest(redirectedEmail, 'synthetic-password');
+    redirectedRequest.headers.set('cf-connecting-ip', '192.0.2.10');
+    const redirectedLogin = await signIn(redirectedRequest);
+    assert.equal(redirectedLogin.status, 503);
+    assert.equal(redirectedLogin.headers.get('Set-Cookie'), null);
     assert.equal((await signIn(loginRequest(email, 'incorrect'))).status, 401);
     assert.equal((await signIn(loginRequest(unlinked.email, unlinked.password))).status, 401);
     for (const newPassword of [undefined, initialPassword, 'too short']) {
@@ -360,6 +369,25 @@ async function check() {
     assert.equal(await resolvePasswordSession(privateRequest(adminCookie), env), null);
     setIdentity(adminId, adminEmail, adminSession.revision);
     assert.equal(await getAdministrator(), null);
+
+    // Recreating the first administrator with the same email assigns a new provider UID.
+    sqlite.exec('DELETE FROM visit_rate_limits');
+    const originalOwner = { id: env.MOBILIZA_SUPABASE_OWNER_ID, email: 'owner@example.test', password: 'synthetic-owner-original' };
+    providerAccounts.set(originalOwner.email, originalOwner);
+    const originalLogin = await signIn(loginRequest(originalOwner.email, originalOwner.password));
+    assert.equal(originalLogin.status, 200);
+    const originalCookie = originalLogin.headers.get('Set-Cookie').split(';')[0];
+    assert.equal((await resolvePasswordSession(privateRequest(originalCookie), env))?.userId, SITE_OWNER_ID);
+
+    const newOwner = { ...originalOwner, id: '00000000-0000-4000-8000-000000000099', password: 'synthetic-owner-replacement' };
+    env.MOBILIZA_SUPABASE_OWNER_ID = newOwner.id;
+    providerAccounts.set(newOwner.email, newOwner);
+    assert.equal(await resolvePasswordSession(privateRequest(originalCookie), env), null);
+    const newOwnerLogin = await signIn(loginRequest(newOwner.email, newOwner.password, { return_to: '/equipe' }));
+    assert.equal(newOwnerLogin.status, 200);
+    assert.deepEqual(await newOwnerLogin.json(), { ok: true, return_to: '/equipe' });
+    const newOwnerCookie = newOwnerLogin.headers.get('Set-Cookie').split(';')[0];
+    assert.equal((await resolvePasswordSession(privateRequest(newOwnerCookie), env))?.userId, SITE_OWNER_ID);
   } finally {
     globalThis.fetch = originalFetch;
     sqlite.close();

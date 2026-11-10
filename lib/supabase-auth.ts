@@ -68,11 +68,15 @@ function sessionHash(request: Request) {
 async function authRequest(config: Configuration, path: string, options: RequestInit = {}, apiKey = config.key) {
   const headers = new Headers(options.headers);
   headers.set('apikey', apiKey);
+  let response: Response;
   try {
-    return await fetch(config.origin + '/auth/v1' + path, {
-      ...options, headers, redirect: 'error', signal: AbortSignal.timeout(8000),
+    response = await fetch(config.origin + '/auth/v1' + path, {
+      ...options, headers, redirect: 'manual', signal: AbortSignal.timeout(8000),
     });
   } catch { throw unavailable(); }
+  // Workers only support follow and manual. Never forward credentials to a redirect.
+  if (response.status >= 300 && response.status < 400) throw unavailable();
+  return response;
 }
 
 async function confirmedIdentity(config: Configuration, email: string, password: string) {
