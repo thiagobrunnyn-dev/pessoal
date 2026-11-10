@@ -19,7 +19,9 @@ export async function uploadBudget(channelId:string,size:number){if(!size)return
 export async function guestLimit(request:Request,channelId:string,mode:'session'|'submit'){
  const now=epoch(),window=Math.floor(now/900),end=(window+1)*900,ip=request.headers.get('cf-connecting-ip')||'unknown';
  // Temporary anti-abuse counters only. No raw IP, user ID or user-agent enters a submission.
- const client=await sha256('guest:'+window+':'+ip);await counter(`guest:${mode}:global:${window}`,end,mode==='session'?1200:600);await counter(`guest:${mode}:property:${channelId}:${window}`,end,mode==='session'?300:120);await counter(`guest:${mode}:client:${client}:${window}`,end,mode==='session'?80:40);
+ const client=await sha256('guest:'+window+':'+ip);
+ // Client first, shared buckets last: a blocked client must not consume the property/global budgets.
+ await counter(`guest:${mode}:client:${client}:${window}`,end,mode==='session'?80:40);await counter(`guest:${mode}:property:${channelId}:${window}`,end,mode==='session'?300:120);await counter(`guest:${mode}:global:${window}`,end,mode==='session'?1200:600);
  await db().prepare('DELETE FROM visit_rate_limits WHERE id IN (SELECT id FROM visit_rate_limits WHERE id LIKE ? AND expires_at<? LIMIT 100)').bind('guest:%',now-900).run();
 }
 export async function startGuestSession(request:Request,token:string){
