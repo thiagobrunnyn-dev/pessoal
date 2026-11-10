@@ -6,6 +6,7 @@ export type ChatGPTUser = {
   displayName: string;
   email: string;
   fullName: string | null;
+  teamSession?: boolean;
 };
 
 const USER_ID_HEADER = "oai-authenticated-user-id";
@@ -14,6 +15,7 @@ const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER =
   "oai-authenticated-user-full-name-encoding";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
+const MOBILIZA_SIGN_IN_PATH = "/entrar";
 const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
@@ -36,6 +38,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
     displayName: fullName ?? email,
     email,
     fullName,
+    teamSession: requestHeaders.get("x-mobiliza-team-session") === "1",
   };
 }
 
@@ -45,7 +48,8 @@ export async function requireChatGPTUser(
   const user = await getChatGPTUser();
   if (user) return user;
 
-  redirect(chatGPTSignInPath(returnTo));
+  const safeReturnTo = safeRelativeReturnPath(returnTo);
+  redirect(`${MOBILIZA_SIGN_IN_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`);
 }
 
 export function chatGPTSignInPath(returnTo: string): string {
@@ -58,7 +62,7 @@ export function chatGPTSignOutPath(returnTo = "/"): string {
   return `${SIGN_OUT_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
 }
 
-function safeRelativeReturnPath(value: string): string {
+export function safeRelativeReturnPath(value: string): string {
   if (!value.startsWith("/") || value.startsWith("//")) return "/";
 
   let url: URL;
@@ -67,14 +71,15 @@ function safeRelativeReturnPath(value: string): string {
   } catch {
     return "/";
   }
-  if (url.origin !== "https://app.local") return "/";
-  if (isReservedAuthPath(url.pathname)) return "/";
+  if (url.origin !== "https://app.local" || url.pathname.startsWith("//")) return "/";
+  if (isReservedAuthPath(url.pathname.replace(/\/+$/, ""))) return "/";
 
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function isReservedAuthPath(pathname: string): boolean {
   return (
+    pathname === MOBILIZA_SIGN_IN_PATH ||
     pathname === SIGN_IN_PATH ||
     pathname === SIGN_OUT_PATH ||
     pathname === CALLBACK_PATH

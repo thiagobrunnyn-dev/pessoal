@@ -62,6 +62,28 @@ await test('replay and immutable triggers preserve original request, files and e
 await test('post-commit response loss preserves uploaded bytes and returns the committed receipt',async()=>{const x=await submission('maintenance',{},image('response loss'));dropCommitResponse=true;const rec=await send(x),r=rowByProtocol(rec.protocol),f=get('SELECT * FROM request_intake_files WHERE intake_id=?',r.id);assert.ok(f&&objects.has(f.object_key));const again=await send(x);assert.equal(again.protocol,rec.protocol);assert.equal(again.alreadySaved,true);});
 await test('transaction failure cleans only uncommitted files',async()=>{const n=count('request_intakes'),objectsBefore=objects.size,x=await submission('maintenance',{},image('failure'));failEvent=true;await assert.rejects(send(x));failEvent=false;assert.equal(count('request_intakes'),n);assert.equal(objects.size,objectsBefore);});
 await test('revocation during private image read fails closed',async()=>{afterGet=()=>run("UPDATE app_members SET status='revoked',revision=revision+1 WHERE user_id=?",managerActor.userId);await reject(manage.intakeFile(manager,fileId),401);});
-await test('rate limits are shared anti-spam protection',async()=>{const req=new Request('https://qa.example',{headers:{'cf-connecting-ip':'synthetic-rate-limit'}});let denied=false;for(let i=0;i<90;i++){try{await pub.startIntakeSession(req,'maintenance');}catch(e){assert.equal(e.status,429);denied=true;break;}}assert.ok(denied);});
+const attempts=prefix=>get('SELECT COALESCE(SUM(attempts),0) n FROM visit_rate_limits WHERE id LIKE ?',prefix+':%').n;
+await test('session attempts rejected by the client limit do not charge shared quotas',async()=>{
+ const req=new Request('https://qa.example',{headers:{'cf-connecting-ip':'synthetic-rate-limit'}}),global=attempts('guest:session:global'),local=attempts('guest:session:property:general:maintenance');
+ for(let i=0;i<80;i++)await pub.startIntakeSession(req,'maintenance');
+ for(let i=0;i<10;i++)await reject(pub.startIntakeSession(req,'maintenance'),429);
+ assert.equal(attempts('guest:session:global')-global,80);
+ assert.equal(attempts('guest:session:property:general:maintenance')-local,80);
+});
+await test('unauthenticated submissions cannot exhaust the shared quota for legitimate forms',async()=>{
+ const global=attempts('guest:submit:global'),local=attempts('guest:submit:property:general:maintenance');
+ const post=(kind,ip,body,headers={})=>publicRoute.POST(new Request('https://qa.example/api/request-forms/'+kind,{method:'POST',headers:{origin:'https://qa.example','cf-connecting-ip':ip,...headers},body}),{params:Promise.resolve({kind})});
+ for(let i=0;i<600;i++)assert.equal((await post('maintenance','synthetic-flood')).status,i<40?415:429);
+ const noSession=new FormData();noSession.set('request_id',randomUUID());noSession.set('challenge','a'.repeat(64));
+ assert.equal((await post('maintenance','synthetic-no-session',noSession)).status,401);
+ assert.equal(attempts('guest:submit:global'),global);
+ assert.equal(attempts('guest:submit:property:general:maintenance'),local);
+ const purchase=await submission('purchase');
+ const submit=()=>post(purchase.kind,'synthetic-legitimate',purchase.form,{cookie:purchase.request.headers.get('cookie')});
+ const saved=await submit();assert.equal(saved.status,200,await saved.clone().text());
+ assert.equal(attempts('guest:submit:global'),global+1);
+ assert.equal((await (await submit()).json()).alreadySaved,true);
+ assert.equal(attempts('guest:submit:global'),global+1);
+});
 console.log(JSON.stringify({passed:report.filter(r=>r.pass).length,failed:report.filter(r=>!r.pass).length}));if(report.some(r=>!r.pass)){console.error(report.filter(r=>!r.pass));process.exitCode=1;}
 })().catch(e=>{console.error(e);process.exitCode=1;});

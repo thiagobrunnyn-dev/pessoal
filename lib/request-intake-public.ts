@@ -4,13 +4,13 @@ import {randomHex,sha256,epoch} from './visit-security';
 import {readServicePhoto} from './service-photo';
 import {SITE_OWNER_ID} from './owner-access';
 import {guestUuid,guestToken,guestReceipt} from './guest-channel-model';
-import {GUEST_HEADERS,guestLimit,uploadBudget,hashBytes} from './guest-channel-public';
+import {GUEST_HEADERS,guestClientLimit,guestSharedLimit,uploadBudget,hashBytes} from './guest-channel-public';
 import {INTAKE_PRIVACY_VERSION,INTAKE_KINDS,intakeKind,parseIntakeValues,type IntakeKind} from './request-intake-model';
 export {GUEST_HEADERS};
 const sessionSeconds=900,cookieName=(kind:IntakeKind)=>'__Host-mobiliza-request-'+kind;
 export function publicFormData(value:string){const kind=intakeKind(value);return {kind,title:INTAKE_KINDS[kind],privacy_version:INTAKE_PRIVACY_VERSION};}
 export async function startIntakeSession(request:Request,value:string){
- const kind=intakeKind(value);await guestLimit(request,'general:'+kind,'session');
+ const kind=intakeKind(value);await guestClientLimit(request,'session');await guestSharedLimit('general:'+kind,'session');
  const cookie=randomHex(),challenge=randomHex(),now=epoch();
  await db().prepare('INSERT INTO request_form_sessions(id,kind,token_hash,challenge_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),kind,await sha256(cookie),await sha256(challenge),now+sessionSeconds,now).run();
  await db().prepare('DELETE FROM request_form_sessions WHERE id IN(SELECT id FROM request_form_sessions WHERE expires_at<? LIMIT 100)').bind(now-900).run();
@@ -34,7 +34,7 @@ export async function submitIntake(request:Request,value:string,form:FormData){
  const fingerprint=await sha256(JSON.stringify({kind,values,photos:prepared.map(f=>[f.type,f.hash])}));
  const replay=async()=>{const row=await db().prepare('SELECT protocol,received_at,request_fingerprint FROM request_intakes WHERE owner_id=? AND kind=? AND request_id=?').bind(SITE_OWNER_ID,kind,requestId).first<any>();if(!row)return null;if(row.request_fingerprint!==fingerprint)throw new RequestError('Este envio já foi recebido com outros dados. Abra um novo formulário.',409);return guestReceipt(row,true);};
  const previous=await replay();if(previous)return previous;
- await uploadBudget('general:'+kind,prepared.reduce((sum,f)=>sum+f.bytes.length,0));
+ await guestSharedLimit('general:'+kind,'submit');await uploadBudget('general:'+kind,prepared.reduce((sum,f)=>sum+f.bytes.length,0));
  const id=crypto.randomUUID(),eventId=crypto.randomUUID(),protocol=(kind==='maintenance'?'MAN-':'COM-')+randomHex(8).toUpperCase(),now=new Date().toISOString(),uploaded:string[]=[];
  const files:{id:string;key:string;type:string;hash:string;size:number;position:number}[]=[];
  try{

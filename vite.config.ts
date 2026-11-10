@@ -50,8 +50,12 @@ export default defineConfig(async ({ command }) => {
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
+  const localMockAuth = command === "serve" && !managedLinux;
 
   return {
+    define: {
+      "import.meta.env.MOBILIZA_LOCAL_MOCK_AUTH": JSON.stringify(localMockAuth ? "1" : "0"),
+    },
     server: {
       ...(managedLinux
         ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] }
@@ -62,7 +66,7 @@ export default defineConfig(async ({ command }) => {
     },
     plugins: [
       vinext(),
-      sites({ mockAuth: !managedLinux }),
+      sites({ mockAuth: localMockAuth, mockUserId: process.env.MOBILIZA_LOCAL_OWNER_ID }),
       connectorPreview(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },

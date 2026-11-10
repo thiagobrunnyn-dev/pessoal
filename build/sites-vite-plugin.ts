@@ -29,7 +29,7 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-export function sites({ mockAuth = true } = {}): Plugin {
+export function sites({ mockAuth = true, mockUserId = localUserId } = {}): Plugin {
   let root = process.cwd();
   let command: "build" | "serve" = "build";
 
@@ -106,7 +106,7 @@ export function sites({ mockAuth = true } = {}): Plugin {
         const signOut = url.pathname === "/signout-with-chatgpt";
         if (!signIn && !signOut) {
           if (signInCookies.length === 1 && signInCookies[0] === "1") {
-            setHeader(request, "oai-authenticated-user-id", localUserId);
+            setHeader(request, "oai-authenticated-user-id", mockUserId);
             setHeader(request, "oai-authenticated-user-email", localEmail);
             setHeader(
               request,

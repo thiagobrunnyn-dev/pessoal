@@ -10,8 +10,8 @@ const migrated=db.prepare('SELECT * FROM properties WHERE id=?').get(legacy);ass
 const reg=load('lib/regional-access.ts');
 const d1={prepare(sql){let args=[];return{sql,get args(){return args},bind(...v){args=v;return this},async first(){return db.prepare(sql).get(...args)||null},async all(){return{results:db.prepare(sql).all(...args)}}}},async batch(stmts){db.exec('BEGIN');try{const r=stmts.map(s=>({meta:db.prepare(s.sql).run(...s.args)}));db.exec('COMMIT');return r}catch(e){db.exec('ROLLBACK');throw e}}};
 const rawFirst=async(sql,...args)=>db.prepare(reg.scopedSelect(sql)).get(...reg.scopedReadArgs(args))||null;
-overrides[root+'/lib/maintenance.ts']={first:rawFirst,all:async(sql,...args)=>db.prepare(reg.scopedSelect(sql)).all(...reg.scopedReadArgs(args)),db:()=>d1,bucket:()=>{throw Error('No photo in test')},clean:(v,max=200)=>String(v??'').trim().slice(0,max),validDate:()=>true};
-overrides[root+'/lib/app-access.ts']={operatorGuard:()=>({sql:'1',args:[]}),recheckOperator:async()=>{}};
+overrides[path.resolve(root,'lib/maintenance.ts')]={first:rawFirst,all:async(sql,...args)=>db.prepare(reg.scopedSelect(sql)).all(...reg.scopedReadArgs(args)),db:()=>d1,bucket:()=>{throw Error('No photo in test')},clean:(v,max=200)=>String(v??'').trim().slice(0,max),validDate:()=>true};
+overrides[path.resolve(root,'lib/app-access.ts')]={operatorGuard:()=>({sql:'1',args:[]}),recheckOperator:async()=>{}};
 const cap=load('lib/property-capacity.ts'),{createProperty}=load('lib/property-create.ts'),{applyCorrection,correctionView}=load('lib/corrections.ts'),{currentPropertyDetails}=load('lib/property-front-photo-data.ts'),{controlData}=load('lib/control-data.ts');
 const op={ownerId:owner,actor:{userId:owner,fullName:'Synthetic'}};
 function form(values={}){const f=new FormData();for(const [k,v]of Object.entries({name:'Synthetic property',address:'Synthetic address',state_code:'PA',request_id:randomUUID(),property_level:'',declared_slots:'',...values}))f.set(k,String(v));return f;}
