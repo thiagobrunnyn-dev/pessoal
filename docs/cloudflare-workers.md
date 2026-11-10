@@ -34,6 +34,14 @@ Configure as variáveis de build por Worker. O nome deve coincidir com o Worker 
 
 Para homologar sem ativar o R2, use `CLOUDFLARE_DEPLOY_ENV=staging` e `CLOUDFLARE_STAGING_WITHOUT_R2=1`. Deixe `CLOUDFLARE_R2_BUCKET_NAME` sem valor. Use dados sintéticos para validar o login, o painel e o envio de formulários de texto. O envio e a leitura de fotos e anexos armazenados no R2 ficam indisponíveis. Para validar esses fluxos, remova `CLOUDFLARE_STAGING_WITHOUT_R2` e configure um bucket de homologação.
 
+### Entrada com e-mail e senha
+
+Aplique a migração D1 `0045_password_access` no banco do ambiente que receberá a nova entrada. Em **Variables & Secrets** do Worker, configure a URL do projeto em `MOBILIZA_SUPABASE_URL`, a chave publicável em `MOBILIZA_SUPABASE_PUBLISHABLE_KEY` e o UUID verificado do sócio-administrador em `MOBILIZA_SUPABASE_OWNER_ID`. Guarde a chave secreta do projeto como segredo de execução `MOBILIZA_SUPABASE_SECRET_KEY`. Essa chave autoriza a criação de usuários no servidor. [Chaves da API do Supabase](https://supabase.com/docs/guides/getting-started/api-keys)
+
+Para vincular uma conta existente, use `MOBILIZA_SUPABASE_MEMBERS` com um objeto JSON que associa o UUID do Supabase ao ID do membro ativo no D1. Confira o e-mail e a função do cadastro antes de vincular. O perfil de encarregado de manutenção mantém o acesso aos registros do Pará.
+
+Em um projeto dedicado ao Mobiliza, desative o cadastro público em **Authentication → Sign In / Providers** e mantenha a confirmação de e-mail. Defina `MOBILIZA_SUPABASE_AUTH=1` depois de preparar o administrador. Valide a entrada dele e o cadastro de um usuário fictício em **Equipe**. O administrador repassa a senha inicial diretamente, e a pessoa define sua própria senha no primeiro acesso. Revogue a conta fictícia ao terminar. [Configuração de autenticação](https://supabase.com/docs/guides/auth/general-configuration)
+
 Com Node.js 22.13 ou superior, valide localmente:
 
 ```sh

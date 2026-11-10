@@ -1,10 +1,11 @@
 import {resolveOperationFilters} from './operation-filters';
 import {hubRequestPredicate,requestDeadlineSql,requestNeededOnSql,operationToday} from './hub-requests';
 import {all,first,db,bucket} from './maintenance';
-import {operatorGuard,MEMBER_INVITATIONS,type Operator} from './app-access';
+import {invitationFor,managerGuard,memberTitle,operatorGuard,type Operator} from './app-access';
 import {serviceReadGuard} from './service-providers';
-import {isRegionalRequest,requireGlobalCatalog} from './regional-access';
+import {isRegionalRequest,REGIONAL_EMAIL,requireGlobalCatalog} from './regional-access';
 import {RequestError} from './http-security';
+import {isRegionalMember,isSupabaseMemberId} from './member-roles';
 import {guestUuid,guestText} from './guest-channel-model';
 import {GUEST_HEADERS,hashBytes} from './guest-channel-public';
 import {sha256} from './visit-security';
@@ -16,7 +17,17 @@ const optionalId=(v:unknown)=>{if(v===undefined||v===null||v==='')return null;if
 async function property(op:Operator,id:string){const p=await first('SELECT p.id,p.name,p.address,p.state_code,p.worksite_id,p.revision,p.archived_at,COALESCE(s.version,0) scope_version FROM properties p LEFT JOIN occupancy_property_scopes s ON s.property_id=p.id WHERE p.owner_id=? AND p.id=?',op.ownerId,id);if(!p)throw missing();return p;}
 const scopeMatches=(r:any,p:any)=>!p.archived_at&&r.state_code===p.state_code&&r.worksite_id===p.worksite_id&&r.scope_version===p.scope_version;
 function propertyGuard(op:Operator,p:any){return {sql:'EXISTS(SELECT 1 FROM properties p WHERE p.id=? AND p.owner_id=? AND p.revision=? AND p.archived_at IS NULL AND p.state_code IS ? AND p.worksite_id IS ? AND COALESCE((SELECT version FROM occupancy_property_scopes WHERE property_id=p.id),0)=?)',args:[p.id,op.ownerId,p.revision,p.state_code,p.worksite_id,p.scope_version]};}
-async function responsibleOptions(op:Operator){const rows=await all("SELECT user_id,email,display_name,role,revision FROM app_members WHERE status='active' ORDER BY display_name");return [{id:op.ownerId,name:'Administrador · administrador',revision:0},...rows.filter(r=>MEMBER_INVITATIONS.some(i=>i.email===r.email&&i.role===r.role)).map(r=>({id:r.user_id,name:r.display_name||MEMBER_INVITATIONS.find(i=>i.email===r.email)!.name,revision:r.revision,email:r.email}))];}
+async function responsibleOptions(op:Operator){
+ const rows=await all("SELECT user_id,email,display_name,role,revision FROM app_members WHERE status='active' ORDER BY display_name");
+ const members=rows.flatMap(row=>{
+  const {user_id:id,email,role,revision}=row;
+  const invitation=invitationFor(email),title=memberTitle({userId:id,email,role});
+  if(id===op.ownerId||!title||(!isSupabaseMemberId(id)&&invitation?.email!==email))return [];
+  const name=row.display_name||invitation?.name||title;
+  return [{id,name,revision,email,regional:isRegionalMember(id,email,role,REGIONAL_EMAIL)}];
+ });
+ return [{id:op.ownerId,name:'Administrador · administrador',revision:0,regional:false},...members];
+}
 function safe(r:any){return {id:r.id,kind:r.kind,protocol:r.protocol,received_at:r.received_at,status:r.status,revision:r.revision,property_id:r.property_id,client_id:r.client_id,cost_center_id:r.cost_center_id,state_code:r.state_code,assigned_at:r.assigned_at,responsible_name:r.responsible_name,responsible_user_id:r.responsible_user_id,linked_order_id:r.linked_order_id,values:JSON.parse(r.values_json)};}
 export async function intakeList(op:Operator,q:URLSearchParams){
  await serviceReadGuard(op);const kind=q.get('kind')||'',status=q.get('status')||'',mine=q.get('mine')==='1';
@@ -70,9 +81,9 @@ export async function triageIntake(op:Operator,v:any){
  if(['assign','responsible'].includes(v.action)){
   const id=v.responsible_user_id??'';if(typeof id!=='string'||id.length>120)throw new RequestError('Confira o responsável.');
   const choices=await responsibleOptions(op),person=id?choices.find(x=>x.id===id):null;if(id&&!person)throw new RequestError('Selecione uma conta de gestão já autorizada.');
-  if(person&&'email' in person&&person.email==='manutencao@example.invalid'&&state!=='PA')throw new RequestError('Esse responsável tem acesso somente ao Pará.');
+  if(person?.regional&&state!=='PA')throw new RequestError('Esse responsável tem acesso somente ao Pará.');
   responsibleId=person?.id??null;responsibleName=person?.name??'';
-  if(person&&person.id!==op.ownerId)guards.push({sql:"EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND status='active' AND revision=?)",args:[person.id,person.revision]});
+  if(person&&person.id!==op.ownerId)guards.push(managerGuard(person.id,person.revision));
  }
  if(p)guards.push(propertyGuard(op,p));
  const order=orderId?await first('SELECT id,version FROM work_orders WHERE id=? AND owner_id=? AND property_id=?',orderId,op.ownerId,propertyId):null;

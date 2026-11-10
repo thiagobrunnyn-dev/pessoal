@@ -62,6 +62,33 @@ await test('replay and immutable triggers preserve original request, files and e
 await test('post-commit response loss preserves uploaded bytes and returns the committed receipt',async()=>{const x=await submission('maintenance',{},image('response loss'));dropCommitResponse=true;const rec=await send(x),r=rowByProtocol(rec.protocol),f=get('SELECT * FROM request_intake_files WHERE intake_id=?',r.id);assert.ok(f&&objects.has(f.object_key));const again=await send(x);assert.equal(again.protocol,rec.protocol);assert.equal(again.alreadySaved,true);});
 await test('transaction failure cleans only uncommitted files',async()=>{const n=count('request_intakes'),objectsBefore=objects.size,x=await submission('maintenance',{},image('failure'));failEvent=true;await assert.rejects(send(x));failEvent=false;assert.equal(count('request_intakes'),n);assert.equal(objects.size,objectsBefore);});
 await test('revocation during private image read fails closed',async()=>{afterGet=()=>run("UPDATE app_members SET status='revoked',revision=revision+1 WHERE user_id=?",managerActor.userId);await reject(manage.intakeFile(manager,fileId),401);});
+await test('approved Supabase members can supervise and receive intakes only within their regional scope',async()=>{
+ const regionalId='supabase:'+randomUUID(),regionalEmail='supabase-regional@example.test';
+ const invalidId='supabase:invalid-id';
+ for(const [id,email] of [[regionalId,regionalEmail],[invalidId,'invalid-id@example.test']]){
+  run("INSERT INTO app_members (user_id,email,display_name,role,status,requested_at) VALUES (?,?,?,'maintenance_lead','active',?)",id,email,'Encarregado QA','2026-10-06T00:00:00Z');
+ }
+ const request=rowByProtocol((await send(await submission())).protocol);
+ const choices=(await manage.intakeDetail(owner,request.id)).catalogs.responsibles;
+ assert.ok(choices.some(person=>person.id===regionalId));
+ assert.ok(!choices.some(person=>person.id===invalidId));
+ await reject(manage.triageIntake(owner,mutation(request,'assign',{property_id:mg,responsible_user_id:regionalId})),400);
+ await manage.triageIntake(owner,mutation(request,'assign',{property_id:pa,responsible_user_id:regionalId}));
+ assert.equal(rowByProtocol(request.protocol).responsible_user_id,regionalId);
+
+ const account='account:'+regionalId;
+ const directory=await people.personDirectory(owner);
+ assert.equal(directory.supervisor_options.find(option=>option.ref===account)?.allowed_state_code,'PA');
+ await reject(create({state_code:'MG',display_name:'Regional supervisor outside PA',supervisor_ref:account}),400);
+ const supported=await create({display_name:'Regional supervisor in PA',supervisor_ref:account});
+ assert.equal(get('SELECT supervisor_account_user_id FROM person_profiles WHERE id=?',supported.id).supervisor_account_user_id,regionalId);
+
+ const supervisor=await create({display_name:'Supervisor QA'});
+ await create({state_code:'MG',display_name:'Existing report outside PA',supervisor_ref:'person:'+supervisor.id});
+ await reject(people.savePersonProfile(owner,edit(supervisor.id,{app_member_user_id:regionalId})),409);
+ const linked=await create({display_name:'Profile linked to regional supervisor',app_member_user_id:regionalId});
+ await reject(create({state_code:'MG',display_name:'Regional profile supervisor outside PA',supervisor_ref:'person:'+linked.id}),400);
+});
 const attempts=prefix=>get('SELECT COALESCE(SUM(attempts),0) n FROM visit_rate_limits WHERE id LIKE ?',prefix+':%').n;
 await test('session attempts rejected by the client limit do not charge shared quotas',async()=>{
  const req=new Request('https://qa.example',{headers:{'cf-connecting-ip':'synthetic-rate-limit'}}),global=attempts('guest:session:global'),local=attempts('guest:session:property:general:maintenance');

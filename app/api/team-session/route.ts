@@ -5,6 +5,7 @@ import { redeemTeamCode, teamSessionCookie } from '../../../lib/team-access';
 
 export async function POST(request: Request) {
   try {
+    if (env.MOBILIZA_SUPABASE_AUTH === '1') throw new RequestError('Entre com seu e-mail e senha.', 404);
     requireSameOrigin(request);
     const body = await boundedJson(request);
     if (typeof body?.code !== 'string') throw new RequestError('Informe o código de convite.');
@@ -23,3 +24,4 @@ export async function POST(request: Request) {
     );
   }
 }
+import {env} from 'cloudflare:workers';

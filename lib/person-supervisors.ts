@@ -1,8 +1,9 @@
 import {all,db,first} from './maintenance';
-import {invitationFor,managerGuard,operatorGuard,type Operator} from './app-access';
+import {invitationFor,managerGuard,memberTitle,operatorGuard,type Operator} from './app-access';
 import {SITE_OWNER_ID} from './owner-access';
 import {isRegionalRequest,REGIONAL_EMAIL} from './regional-access';
 import {RequestError} from './http-security';
+import {isRegionalMember,isSupabaseMemberId} from './member-roles';
 
 type Row=Record<string,string|number|null>;
 export type SupervisorOption={ref:string;display_name:string;title:string;kind:'person'|'account';state_code:string|null;allowed_state_code:string|null;profile_id?:string;aliases?:string[]};
@@ -20,7 +21,10 @@ export function supervisorInput(form:FormData,original:Row|null):SupervisorLink{
   const ref=values[0];
   if(ref==='')return {supervisor_profile_id:null,supervisor_account_user_id:null};
   if(ref.startsWith('person:')&&UUID.test(ref.slice(7)))return {supervisor_profile_id:ref.slice(7),supervisor_account_user_id:null};
-  if(ref.startsWith('account:')&&ACCOUNT_ID.test(ref.slice(8)))return {supervisor_profile_id:null,supervisor_account_user_id:ref.slice(8)};
+  if(ref.startsWith('account:')){
+   const accountId=ref.slice(8);
+   if(ACCOUNT_ID.test(accountId)||isSupabaseMemberId(accountId))return {supervisor_profile_id:null,supervisor_account_user_id:accountId};
+  }
   throw new RequestError('Responsável pela equipe inválido.');
  }
  const values=form.getAll('supervisor_profile_id');
@@ -33,18 +37,20 @@ export function supervisorInput(form:FormData,original:Row|null):SupervisorLink{
 export async function supervisorOptions(visibleRows:Row[]):Promise<SupervisorOption[]>{
  const options:SupervisorOption[]=visibleRows.filter(row=>row.status==='active'&&row.directory!=='guest').map(row=>({ref:'person:'+row.id,display_name:String(row.display_name),title:String(row.job_title),kind:'person',state_code:row.state_code?String(row.state_code):null,allowed_state_code:null,profile_id:String(row.id)}));
  const linked=new Map(visibleRows.filter(row=>row.app_member_user_id).map(row=>[String(row.app_member_user_id),row]));
- const members=await all("SELECT user_id,email,role,status FROM app_members");
+ const members=await all("SELECT user_id,email,display_name,role,status FROM app_members");
  for(const member of members){
-  if(member.email!==REGIONAL_EMAIL||member.role!=='maintenance_lead')continue;
+  if(!isRegionalMember(member.user_id,member.email,member.role,REGIONAL_EMAIL))continue;
   const profile=linked.get(String(member.user_id));
   const option=options.find(item=>item.profile_id===profile?.id);
   if(option)option.allowed_state_code='PA';
  }
  const accounts=[{user_id:SITE_OWNER_ID,name:'Administrador',title:'Sócio-administrador',state_code:null as string|null},...members.flatMap(row=>{
-  const invitation=invitationFor(String(row.email));
-  // Both the approved email and role must match, just as in managerGuard.
-  if(row.status!=='active'||!invitation||invitation.email!==row.email||invitation.role!==row.role||row.user_id===SITE_OWNER_ID)return [];
-  return [{user_id:String(row.user_id),name:invitation.name,title:invitation.title,state_code:invitation.email===REGIONAL_EMAIL?'PA':null}];
+  const userId=String(row.user_id),email=String(row.email),role=String(row.role);
+  if(row.status!=='active'||userId===SITE_OWNER_ID)return [];
+  const invitation=invitationFor(email),title=memberTitle({userId,email,role});
+  if(!title||(!isSupabaseMemberId(userId)&&invitation?.email!==email))return [];
+  const name=isSupabaseMemberId(userId)?String(row.display_name||title):invitation?.name||title;
+  return [{user_id:userId,name,title,state_code:isRegionalMember(userId,email,role,REGIONAL_EMAIL)?'PA':null}];
  })];
  for(const account of accounts){
   const profile=linked.get(account.user_id);
@@ -100,18 +106,17 @@ export async function supervisorGuards(op:Operator,id:string,next:Row,archive:bo
   add("EXISTS(SELECT 1 FROM person_profiles WHERE id=? AND owner_id=? AND revision=? AND status='active' AND directory<>'guest'"+(regional?" AND state_code='PA'":'')+')',direct.id,op.ownerId,direct.revision);
   if(direct.app_member_user_id){
    const member=await first('SELECT user_id,email,role,revision,status FROM app_members WHERE user_id=?',direct.app_member_user_id);
-   if(member?.email===REGIONAL_EMAIL&&member.role==='maintenance_lead'){
-    if(next.state_code!=='PA')throw new RequestError('Este responsável pela equipe está disponível somente para cadastros do Pará.');
+   if(member){
+    if(isRegionalMember(member.user_id,member.email,member.role,REGIONAL_EMAIL)&&next.state_code!=='PA')throw new RequestError('Este responsável pela equipe está disponível somente para cadastros do Pará.');
     add('EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND email=? AND role=? AND status=?)',member.user_id,member.revision,member.email,member.role,member.status);
-   }else if(member)add('EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND email=? AND role=? AND status=?)',member.user_id,member.revision,member.email,member.role,member.status);
-   else add('NOT EXISTS(SELECT 1 FROM app_members WHERE user_id=?)',direct.app_member_user_id);
+   }else add('NOT EXISTS(SELECT 1 FROM app_members WHERE user_id=?)',direct.app_member_user_id);
   }
  }
  if(!archive&&next.supervisor_account_user_id&&next.supervisor_account_user_id!==SITE_OWNER_ID){
   const member=await first("SELECT user_id,email,role,revision FROM app_members WHERE user_id=? AND status='active'",next.supervisor_account_user_id);
-  const invitation=member?invitationFor(String(member.email)):null;
-  if(!member||!invitation||invitation.email!==member.email||invitation.role!==member.role)throw new RequestError('Escolha uma conta gestora ativa disponível neste acesso.');
-  if(invitation.email===REGIONAL_EMAIL&&next.state_code!=='PA')throw new RequestError('Este responsável pela equipe está disponível somente para cadastros do Pará.');
+  if(!member||!memberTitle({userId:member.user_id,email:member.email,role:member.role})||
+   (!isSupabaseMemberId(member.user_id)&&invitationFor(member.email)?.email!==member.email))throw new RequestError('Escolha uma conta gestora ativa disponível neste acesso.');
+  if(isRegionalMember(member.user_id,member.email,member.role,REGIONAL_EMAIL)&&next.state_code!=='PA')throw new RequestError('Este responsável pela equipe está disponível somente para cadastros do Pará.');
   const memberGuard=managerGuard(String(member.user_id),Number(member.revision));add(memberGuard.sql,...memberGuard.args);
   add("EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND email=? AND role=? AND revision=? AND status='active')",member.user_id,member.email,member.role,member.revision);
  }

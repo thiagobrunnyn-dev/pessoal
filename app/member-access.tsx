@@ -2,13 +2,15 @@
 
 import {useEffect,useState} from 'react';
 import {ArrowLeft,Copy,KeyRound,RefreshCw,UserRound} from 'lucide-react';
+import {isMemberRole,isSupabaseMemberId,MEMBER_ROLES} from '../lib/member-roles';
 import TeamSignOut from './components/team-sign-out';
+import CreatePasswordMember from './equipe/create-password-member';
 
 type Data=Record<string,any>;
 type IssuedInvite={email:string;code:string;expiresAt:Date};
 const inviteTime=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Belem'});
 
-export default function MemberAccess({owner=false,teamSession=false}:{owner?:boolean;teamSession?:boolean}){
+export default function MemberAccess({owner=false,teamSession=false,passwordAuth=false}:{owner?:boolean;teamSession?:boolean;passwordAuth?:boolean}){
  const [data,setData]=useState<Data|null>(null);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
@@ -92,7 +94,22 @@ export default function MemberAccess({owner=false,teamSession=false}:{owner?:boo
     </div>
     {!data?<p>Carregando…</p>:owner?<>
      <p className="muted">Administrador é o sócio-administrador. Os integrantes abaixo gerenciam as áreas operacionais conforme o escopo indicado. Publicação, membros e códigos permanecem com Administrador. Gestores podem ativar e desativar o QR de consulta da Limpeza. A lavanderia tem acesso separado.</p>
-     <p className="muted">O código de convite autoriza quem o utilizar a entrar no painel com o escopo indicado. Entregue-o diretamente à pessoa convidada.</p>
+     {passwordAuth ? <>
+      <CreatePasswordMember onCreated={()=>void load()}/>
+      <section className="clean-inset" aria-labelledby="password-members-title">
+       <h2 id="password-members-title">Contas de e-mail e senha</h2>
+       {data.members.filter((member:Data)=>isSupabaseMemberId(member.user_id)).map((member:Data)=><article className="history-item" key={member.user_id}>
+        <h3>{member.display_name}</h3>
+        <p>{member.email} · {isMemberRole(member.role)?MEMBER_ROLES[member.role]:''}</p>
+        <p className="muted">{member.status==='active'?'Acesso operacional liberado':member.status==='provisioning'?'Cadastro pendente de verificação':'Acesso encerrado'}</p>
+        {member.status==='active'&&<button type="button" className="button secondary" disabled={disabled}
+          onClick={()=>void act('revoke',member.user_id)}>Encerrar acesso</button>}
+        {member.status==='revoked'&&<button type="button" className="button secondary" disabled={disabled}
+          onClick={()=>void act('approve',member.user_id,member.display_name)}>Liberar acesso</button>}
+       </article>)}
+       {!data.members.some((member:Data)=>isSupabaseMemberId(member.user_id))&&<p className="muted">As contas cadastradas aqui aparecem nesta lista.</p>}
+      </section>
+     </>:<p className="muted">O código de convite autoriza quem o utilizar a entrar no painel com o escopo indicado. Entregue-o diretamente à pessoa convidada.</p>}
      {data.invitations.map((inv:Data)=>{
       const members=data.members.filter((member:Data)=>member.email===inv.email);
       return <section className="clean-inset" key={inv.email}>
@@ -101,7 +118,7 @@ export default function MemberAccess({owner=false,teamSession=false}:{owner?:boo
         <p>{inv.email}</p>
         <small>{inv.role==='maintenance_lead'?'Pará · todas as obras. Registros sem região confirmada ficam restritos.':'Acesso geral · todos os estados e obras.'}</small>
        </div></div>
-       {invite&&invite.email===inv.email?<div className="visit-code no-print" aria-label={'Convite para '+inv.name}>
+       {!passwordAuth&&(invite&&invite.email===inv.email?<div className="visit-code no-print" aria-label={'Convite para '+inv.name}>
         <span>Código individual de uso único</span>
         <strong>{invite.code}</strong>
         <small>Válido até <time dateTime={invite.expiresAt.toISOString()}>{inviteTime.format(invite.expiresAt)}</time> (Belém). Compartilhe somente com {inv.email}. O código é exibido apenas nesta confirmação.</small>
@@ -114,9 +131,9 @@ export default function MemberAccess({owner=false,teamSession=false}:{owner?:boo
         <button type="button" className="button secondary" disabled={disabled||!!invite} aria-label={'Gerar código de convite para '+inv.name} onClick={()=>void generateInvite(inv.email)}>
          <KeyRound size={16}/>{generatingEmail===inv.email?'Gerando convite…':'Gerar código de convite'}
         </button>
-       </div>}
+       </div>)}
        {inviteError&&inviteError.email===inv.email&&<p className="error" role="alert">{inviteError.message}</p>}
-       {!members.length?<><h3>Aguardando o primeiro acesso</h3><p>Gere um código para liberar o perfil. Se a pessoa entrar com ChatGPT, ela pode solicitar o vínculo para sua aprovação.</p></>:members.map((m:Data)=><article className="history-item" key={m.user_id}>
+       {!members.length?<><h3>Aguardando o primeiro acesso</h3><p>{passwordAuth?'Vincule a conta de e-mail e senha a um cadastro autorizado do Mobiliza.':'Gere um código para liberar o perfil. Se a pessoa entrar com ChatGPT, ela pode solicitar o vínculo para sua aprovação.'}</p></>:members.map((m:Data)=><article className="history-item" key={m.user_id}>
         <p className="muted">{m.status==='active'?'Acesso operacional liberado':m.status==='pending'?'Aguardando confirmação da identidade':'Acesso encerrado'}</p>
         <details><summary>Referência da conta para conferir com {inv.name}</summary><p style={{overflowWrap:'anywhere'}}>{m.user_id}</p></details>
         <div className="form-actions">{m.status!=='active'?<button type="button" className="button" disabled={disabled} onClick={()=>void act('approve',m.user_id,inv.name)}>Confirmar {inv.name} e liberar</button>:<button type="button" className="button secondary" disabled={disabled} onClick={()=>void act('revoke',m.user_id)}>Encerrar acesso</button>}</div>

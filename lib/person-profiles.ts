@@ -2,6 +2,7 @@ import {all,first,db,bucket} from './maintenance';
 import {operatorGuard,recheckOperator,type Operator} from './app-access';
 import {SITE_OWNER_ID} from './owner-access';
 import {isRegionalRequest,REGIONAL_EMAIL} from './regional-access';
+import {isRegionalMember} from './member-roles';
 import {BRAZIL_STATES} from './brazil-states';
 import {RequestError} from './http-security';
 import {sanitizePhoto} from './photo-privacy';
@@ -206,7 +207,7 @@ export async function savePersonProfile(op:Operator,form:FormData,context?:{gues
    const member=await first("SELECT user_id,email,role,revision FROM app_members WHERE user_id=? AND status='active'",next.app_member_user_id);
    if(!member)throw new RequestError('Selecione o ID exato de uma conta ativa.');
    guards.push("EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND email=? AND role=? AND status='active')");guardArgs.push(member.user_id,member.revision,member.email,member.role);
-   if(member.email===REGIONAL_EMAIL&&member.role==='maintenance_lead'){
+   if(isRegionalMember(member.user_id,member.email,member.role,REGIONAL_EMAIL)){
     // A later account binding must not circumvent the supervisor's PA limit.
     // Only IDs are inspected here; this path already requires the exact owner.
     if(await db().prepare("SELECT id FROM person_profiles WHERE owner_id=? AND supervisor_profile_id=? AND status='active' AND state_code IS NOT 'PA' LIMIT 1").bind(op.ownerId,id).first())throw new RequestError('Reatribua as pessoas fora do Pará antes de vincular esta conta regional.',409);

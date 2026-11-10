@@ -5,6 +5,7 @@ import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 import { trustedIdentityRequest } from "../lib/trusted-identity";
 import { resolveTeamSession } from "../lib/team-access";
 import { resolveCloudflareOwner } from "../lib/cloudflare-owner-auth";
+import { resolvePasswordSession } from "../lib/supabase-auth";
 
 export default {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
@@ -29,10 +30,14 @@ export default {
     }
     if(!env.DB)return new Response('Serviço temporariamente indisponível.',{status:503});
     const standalone = env.MOBILIZA_AUTH_MODE === 'cloudflare-access';
-    const localMock = !standalone && import.meta.env.DEV && import.meta.env.MOBILIZA_LOCAL_MOCK_AUTH === '1';
-    request = trustedIdentityRequest(request, standalone ? {} : env, localMock);
-    const team = await resolveTeamSession(request, env.DB);
-    const actor = team ?? (standalone ? await resolveCloudflareOwner(request, env) : null);
+    const passwordMode = env.MOBILIZA_SUPABASE_AUTH === '1';
+    const sitesIdentity = !standalone && !passwordMode;
+    const localMock = sitesIdentity && import.meta.env.DEV && import.meta.env.MOBILIZA_LOCAL_MOCK_AUTH === '1';
+    request = trustedIdentityRequest(request, sitesIdentity ? env : {}, localMock);
+    const team = passwordMode
+      ? await resolvePasswordSession(request, env).catch(() => null)
+      : await resolveTeamSession(request, env.DB);
+    const actor = team ?? (standalone && !passwordMode ? await resolveCloudflareOwner(request, env) : null);
     if (actor || request.headers.has('x-mobiliza-team-session')) {
       const headers = new Headers(request.headers);
       headers.delete('x-mobiliza-team-session');

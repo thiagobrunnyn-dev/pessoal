@@ -16,6 +16,7 @@ const USER_FULL_NAME_ENCODING_HEADER =
   "oai-authenticated-user-full-name-encoding";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 const MOBILIZA_SIGN_IN_PATH = "/entrar";
+const PASSWORD_SESSION_PATH = "/api/password-session";
 const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
@@ -80,6 +81,7 @@ export function safeRelativeReturnPath(value: string): string {
 function isReservedAuthPath(pathname: string): boolean {
   return (
     pathname === MOBILIZA_SIGN_IN_PATH ||
+    pathname === PASSWORD_SESSION_PATH ||
     pathname === SIGN_IN_PATH ||
     pathname === SIGN_OUT_PATH ||
     pathname === CALLBACK_PATH

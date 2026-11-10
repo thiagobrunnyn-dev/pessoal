@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import { invitationFor } from '../../../lib/app-access';
 import { boundedJson, RequestError, requireSameOrigin } from '../../../lib/http-security';
 import { db, noCache } from '../../../lib/maintenance';
@@ -7,6 +8,7 @@ import { sha256 } from '../../../lib/visit-security';
 
 export async function POST(request: Request) {
   try {
+    if (env.MOBILIZA_SUPABASE_AUTH === '1') throw new RequestError('A equipe entra com e-mail e senha.', 404);
     requireSameOrigin(request);
     const owner = await getOwnerUser();
     if (!owner) throw new RequestError('Apenas o administrador pode gerar convites.', 403);

@@ -13,5 +13,11 @@ declare namespace Cloudflare {
     MOBILIZA_ACCESS_TEAM_URL?: string;
     MOBILIZA_ACCESS_AUD?: string;
     MOBILIZA_ACCESS_OWNER_SUB?: string;
+    MOBILIZA_SUPABASE_AUTH?: string;
+    MOBILIZA_SUPABASE_URL?: string;
+    MOBILIZA_SUPABASE_PUBLISHABLE_KEY?: string;
+    MOBILIZA_SUPABASE_OWNER_ID?: string;
+    MOBILIZA_SUPABASE_MEMBERS?: string;
+    MOBILIZA_SUPABASE_SECRET_KEY?: string;
   }
 }
