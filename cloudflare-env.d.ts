@@ -8,5 +8,6 @@ declare namespace Cloudflare {
     MOBILIZA_SUPABASE_OWNER_ID?: string;
     MOBILIZA_SUPABASE_MEMBERS?: string;
     MOBILIZA_SUPABASE_SECRET_KEY?: string;
+    MOBILIZA_FRAME_ANCESTORS?: string;
   }
 }

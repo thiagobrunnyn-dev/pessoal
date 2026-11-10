@@ -46,3 +46,22 @@ Todos usam o endpoint `/api/integrations/v1/whatsapp`, implementado em `lib/what
 ## Testes
 
 `node tests/whatsapp.cjs` exercita os handlers reais com as migrações em SQLite em memória: captura, deduplicação, análise, resumo, fila de envio, retenção e permissões.
+
+## Agente da gestão (Mobi)
+
+O fluxo `Mobiliza | Agente da gestão | WhatsApp` é um assistente de consulta para os gestores, dentro de um grupo de WhatsApp só da gestão:
+
+- **Perguntas:** no grupo, escreva `Mobi, ...` seguido da pergunta ("Mobi, o que está pendente hoje?"). Ele consulta o painel na hora e responde no grupo.
+- **Resumo do dia:** todo dia às 7h posta o que está urgente ou atrasado, o que vence hoje e os números gerais.
+- **Somente leitura:** usa uma chave de consulta do painel. Não altera registros nem escreve em outros grupos.
+- **Fontes:** resumo geral, tarefas de hoje, indicadores, solicitações gerais, solicitações dos imóveis e Central do WhatsApp.
+
+Para ativar:
+
+1. Crie o grupo da gestão com o número da operação e copie o identificador dele (termina em `@g.us`; aparece na lista de grupos do WAHA e na Central).
+2. No nó "Preparar pedido", preencha `GRUPO_DA_GESTAO`. Enquanto estiver vazio, o agente não responde a ninguém.
+3. No painel, crie uma chave **somente leitura**; no n8n, crie a credencial `Mobiliza · Agente da gestão (leitura)` com `Authorization: Bearer mbl_...` e selecione-a nas seis ferramentas.
+4. No WAHA, aponte um webhook com o evento `message` (não `message.any`) para a URL de produção do nó "Mensagem do WAHA", com um cabeçalho secreto igual ao da credencial desse nó.
+5. Não marque o grupo da gestão como acompanhado na Central, para as perguntas e respostas não entrarem na análise dos grupos.
+
+O agente responde com o que as consultas devolvem, mas a redação é de um modelo de IA e pode errar; para decisões importantes, confira no painel. As perguntas e os dados consultados são enviados à OpenAI.
