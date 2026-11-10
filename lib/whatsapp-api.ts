@@ -38,6 +38,7 @@ const summaryColumns = 's.id,s.chat_id,c.name chat_name,s.day,s.summary,s.topics
 const summaryFrom = 'FROM whatsapp_summaries s JOIN whatsapp_chats c ON c.id=s.chat_id AND c.owner_id=s.owner_id';
 const changes = (result: D1Result) => Number(result.meta?.changes || 0);
 const summaryOut = ({topics_json, ...row}: SummaryRow) => ({...row, topics: parseTopics(topics_json)});
+const FINAL_OUTBOX = ['sent', 'failed', 'cancelled'], CLOSED_REQUEST = ['done', 'dismissed'];
 
 export function createWhatsappApi(d: WhatsappDependencies) {
   const clock = () => d.now ? d.now() : new Date();
@@ -50,6 +51,22 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     console.error('whatsapp', error instanceof Error ? error.message : 'erro desconhecido');
     return reply({error: fallback}, 503);
   };
+
+  const retentionCutoff = (now: Date) => new Date(now.getTime() - WHATSAPP_RETENTION_DAYS * 86_400_000).toISOString();
+  /**
+   * Apaga o que passou do prazo de retenção, em lotes pequenos. Roda junto das ações agendadas do
+   * n8n (captura, sincronização de grupos e fila de envio), então não depende de chegar mensagem nova.
+   */
+  function retentionStatements(op: Operator, now: Date) {
+    const nowIso = now.toISOString(), cutoff = retentionCutoff(now);
+    return [
+      stmt('UPDATE whatsapp_messages SET body=NULL,sender_jid=NULL,sender_name=NULL,purged_at=? WHERE id IN (SELECT id FROM whatsapp_messages WHERE owner_id=? AND purged_at IS NULL AND sent_at<? LIMIT 500)', nowIso, op.ownerId, cutoff),
+      stmt("UPDATE whatsapp_outbox SET body='',purged_at=? WHERE id IN (SELECT id FROM whatsapp_outbox WHERE owner_id=? AND purged_at IS NULL AND status IN ('sent','failed','cancelled') AND created_at<? LIMIT 200)", nowIso, op.ownerId, cutoff),
+      stmt("UPDATE whatsapp_requests SET requester_name=NULL WHERE id IN (SELECT id FROM whatsapp_requests WHERE owner_id=? AND requester_name IS NOT NULL AND status IN ('done','dismissed') AND updated_at<? LIMIT 200)", op.ownerId, cutoff),
+    ];
+  }
+  // As consultas também escondem o que já venceu, mesmo que a limpeza ainda não tenha rodado.
+  const expiredRequest = (request: WhatsappRequest, cutoff: string) => CLOSED_REQUEST.includes(request.status) && request.updated_at < cutoff ? {...request, requester_name: null} : request;
 
   async function operator(): Promise<Operator> {
     const op = await d.getOperator();
@@ -94,24 +111,28 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     const chat = await chatRow(op, id);
     const messages = await d.all<WhatsappMessage>('SELECT id,direction,sender_name,kind,body,has_media,sent_at,purged_at,category,is_request FROM whatsapp_messages WHERE chat_id=? AND owner_id=? AND sent_at<? ORDER BY sent_at DESC,id DESC LIMIT 101', id, op.ownerId, before);
     const requests = await d.all<WhatsappRequest>(`SELECT ${requestColumns} ${requestFrom} WHERE r.chat_id=? AND r.owner_id=? ORDER BY r.created_at DESC LIMIT 30`, id, op.ownerId);
+    const now = clock(), cutoff = retentionCutoff(now);
+    const visible = messages.slice(0, 100).map(message => message.sent_at < cutoff && !message.purged_at ? {...message, body: null, sender_name: null, purged_at: now.toISOString()} : message);
     const summaries = await d.all<SummaryRow>(`SELECT ${summaryColumns} ${summaryFrom} WHERE s.chat_id=? AND s.owner_id=? ORDER BY s.day DESC LIMIT 14`, id, op.ownerId);
-    return {chat, messages: messages.slice(0, 100), has_more: messages.length > 100, requests, summaries: summaries.map(summaryOut), can_manage: isAdmin(op)};
+    return {chat, messages: visible, has_more: messages.length > 100, requests: requests.map(request => expiredRequest(request, cutoff)), summaries: summaries.map(summaryOut), can_manage: isAdmin(op)};
   }
   async function requestsView(op: Operator, query: URLSearchParams) {
     const status = query.get('status') || 'open';
     const where = status === 'open' ? " AND r.status IN ('detected','accepted')" : status === 'all' ? '' : ' AND r.status=?';
     const requests = await d.all<WhatsappRequest>(`SELECT ${requestColumns} ${requestFrom} WHERE r.owner_id=?${where} ORDER BY CASE r.urgency WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,r.created_at DESC LIMIT 201`,
       op.ownerId, ...(where.endsWith('?') ? [readStatus(status)] : []));
-    return {requests: requests.slice(0, 200), limited: requests.length > 200};
+    const cutoff = retentionCutoff(clock());
+    return {requests: requests.slice(0, 200).map(request => expiredRequest(request, cutoff)), limited: requests.length > 200};
   }
   async function outboxView(op: Operator) {
-    const items = await d.all<WhatsappOutboxItem>('SELECT o.id,o.chat_id,c.name chat_name,o.body,o.status,o.created_by_name,o.created_at,o.sent_at,o.error FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? ORDER BY o.created_at DESC LIMIT 50', op.ownerId);
-    return {items};
+    const items = await d.all<WhatsappOutboxItem>('SELECT o.id,o.chat_id,c.name chat_name,o.body,o.status,o.created_by_name,o.created_at,o.sent_at,o.error,o.purged_at FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? ORDER BY o.created_at DESC LIMIT 50', op.ownerId);
+    const now = clock(), cutoff = retentionCutoff(now);
+    return {items: items.map(item => !item.purged_at && item.created_at < cutoff && FINAL_OUTBOX.includes(item.status) ? {...item, body: '', purged_at: now.toISOString()} : item)};
   }
   async function pendingAnalysis(op: Operator, query: URLSearchParams) {
     const rawLimit = query.get('limit') || '25';
     if (!/^\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 40) throw new RequestError('Limite inválido (1 a 40).');
-    const messages = await d.all("SELECT m.id,c.name chat_name,m.sender_name,m.sent_at,m.kind,m.body FROM whatsapp_messages m JOIN whatsapp_chats c ON c.id=m.chat_id AND c.owner_id=m.owner_id WHERE m.owner_id=? AND m.analyzed_at IS NULL AND m.direction='in' AND m.body IS NOT NULL AND c.monitored=1 ORDER BY m.sent_at LIMIT ?", op.ownerId, Number(rawLimit));
+    const messages = await d.all("SELECT m.id,c.name chat_name,m.sender_name,m.sent_at,m.kind,m.body FROM whatsapp_messages m JOIN whatsapp_chats c ON c.id=m.chat_id AND c.owner_id=m.owner_id WHERE m.owner_id=? AND m.analyzed_at IS NULL AND m.direction='in' AND m.body IS NOT NULL AND m.sent_at>=? AND c.monitored=1 ORDER BY m.sent_at LIMIT ?", op.ownerId, retentionCutoff(clock()), Number(rawLimit));
     return {messages};
   }
   async function summaryTargets(op: Operator, query: URLSearchParams) {
@@ -126,7 +147,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     const id = requireUuid(query.get('id'), 'Grupo não encontrado.'), day = requireDay(query.get('day')), [start, end] = dayRange(day);
     const chat = await d.first<{id: string; name: string}>('SELECT id,name FROM whatsapp_chats WHERE id=? AND owner_id=?', id, op.ownerId);
     if (!chat) throw new RequestError('Grupo não encontrado.', 404);
-    const messages = await d.all('SELECT sender_name,direction,sent_at,category,substr(body,1,600) body FROM whatsapp_messages WHERE chat_id=? AND owner_id=? AND sent_at>=? AND sent_at<? AND body IS NOT NULL ORDER BY sent_at LIMIT 401', id, op.ownerId, start, end);
+    const messages = await d.all('SELECT sender_name,direction,sent_at,category,substr(body,1,600) body FROM whatsapp_messages WHERE chat_id=? AND owner_id=? AND sent_at>=? AND sent_at<? AND sent_at>=? AND body IS NOT NULL ORDER BY sent_at LIMIT 401', id, op.ownerId, start, end, retentionCutoff(clock()));
     return {chat, day, messages: messages.slice(0, 400), limited: messages.length > 400};
   }
 
@@ -162,6 +183,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
         crypto.randomUUID(), op.ownerId, chat.jid, chat.name, chat.participants, nowIso, nowIso, ...guard.args)));
       saved += results.reduce((sum, result) => sum + changes(result), 0);
     }
+    await d.db().batch(retentionStatements(op, clock()));
     return {synced: saved, ignored: (body.chats as unknown[]).length - unique.length};
   }
 
@@ -170,7 +192,10 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     const items = requireList(body.messages, 50, 'Envie de 1 a 50 mensagens por chamada.');
     const messages = items.map(item => readMessage(item, now)).filter((message): message is IncomingMessage => !!message);
     const jids = [...new Set(messages.map(message => message.chatJid))];
-    if (!jids.length) return {stored: 0, duplicates: 0, unmonitored: 0, ignored: items.length};
+    if (!jids.length) {
+      await d.db().batch(retentionStatements(op, now));
+      return {stored: 0, duplicates: 0, unmonitored: 0, ignored: items.length};
+    }
     // Grupo novo é só cadastrado (sem monitorar): a gestão decide no painel o que acompanhar.
     await d.db().batch(jids.map(jid => stmt(
       `INSERT INTO whatsapp_chats (id,owner_id,chat_jid,kind,name,monitored,revision,created_at,updated_at)
@@ -196,10 +221,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       if (!latest.has(id) || latest.get(id)! < message.sentAt) latest.set(id, message.sentAt);
     }
     const touches = [...latest].map(([id, sentAt]) => stmt('UPDATE whatsapp_chats SET last_message_at=?,updated_at=? WHERE id=? AND owner_id=? AND (last_message_at IS NULL OR last_message_at<?)', sentAt, nowIso, id, op.ownerId, sentAt));
-    // Retenção: apaga texto e remetente das mensagens antigas, em lotes pequenos a cada captura.
-    const cutoff = new Date(now.getTime() - WHATSAPP_RETENTION_DAYS * 86_400_000).toISOString();
-    const purge = stmt('UPDATE whatsapp_messages SET body=NULL,sender_jid=NULL,sender_name=NULL,purged_at=? WHERE id IN (SELECT id FROM whatsapp_messages WHERE owner_id=? AND purged_at IS NULL AND sent_at<? LIMIT 500)', nowIso, op.ownerId, cutoff);
-    const results = await d.db().batch([...inserts, ...touches, purge]);
+    const results = await d.db().batch([...inserts, ...touches, ...retentionStatements(op, now)]);
     const stored = results.slice(0, inserts.length).reduce((sum, result) => sum + changes(result), 0);
     return {stored, duplicates: accepted.length - stored, unmonitored: messages.length - accepted.length, ignored: items.length - messages.length};
   }
@@ -253,8 +275,12 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     const stale = new Date(now.getTime() - WHATSAPP_SEND_TIMEOUT_MINUTES * 60_000).toISOString();
     await stmt(`UPDATE whatsapp_outbox SET status='failed',error='Envio não confirmado pelo n8n. Confira o grupo antes de reenviar.' WHERE owner_id=? AND status='sending' AND claimed_at<? AND ${guard.sql}`, op.ownerId, stale, ...guard.args).run();
     const queued = await d.all<{id: string; body: string; chat_jid: string}>("SELECT o.id,o.body,c.chat_jid FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? AND o.status='queued' ORDER BY o.created_at LIMIT ?", op.ownerId, limit);
-    if (!queued.length) return {messages: []};
+    if (!queued.length) {
+      await d.db().batch(retentionStatements(op, now));
+      return {messages: []};
+    }
     const results = await d.db().batch(queued.map(item => stmt(`UPDATE whatsapp_outbox SET status='sending',claimed_at=? WHERE id=? AND owner_id=? AND status='queued' AND ${guard.sql}`, nowIso, item.id, op.ownerId, ...guard.args)));
+    await d.db().batch(retentionStatements(op, now));
     return {messages: queued.filter((_, index) => changes(results[index]) === 1)};
   }
 

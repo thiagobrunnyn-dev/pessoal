@@ -2,7 +2,10 @@
 // Sem acesso a banco ou rede; usado pela API (lib/whatsapp-api.ts) e pela tela.
 import {RequestError} from './http-security';
 
-/** O texto e o remetente de cada mensagem são apagados depois deste prazo. */
+/**
+ * Prazo de retenção. Depois dele são apagados o texto e o remetente das mensagens, o texto dos
+ * envios já finalizados e o nome do solicitante das solicitações encerradas.
+ */
 export const WHATSAPP_RETENTION_DAYS = 90;
 /** Envio sem confirmação do n8n depois deste prazo vira falha; nunca é reenviado sozinho. */
 export const WHATSAPP_SEND_TIMEOUT_MINUTES = 10;
@@ -58,7 +61,7 @@ export type WhatsappSummary = {
 };
 export type WhatsappOutboxItem = {
   id: string; chat_id: string; chat_name: string; body: string; status: OutboxStatus; created_by_name: string;
-  created_at: string; sent_at: string | null; error: string | null;
+  created_at: string; sent_at: string | null; error: string | null; purged_at: string | null;
 };
 
 type Json = Record<string, unknown>;

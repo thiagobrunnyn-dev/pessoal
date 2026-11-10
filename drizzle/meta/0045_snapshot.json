@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0ccea528-5660-45a6-99c2-636853ec3a1b",
+  "id": "54274fe5-cb1a-4fed-9740-11f8daf55c33",
   "prevId": "5682e616-2173-4a11-bd21-a425e34ffe5d",
   "tables": {
     "app_members": {
@@ -11319,6 +11319,15 @@
             "sent_at"
           ],
           "isUnique": false
+        },
+        "idx_whatsapp_messages_retention": {
+          "name": "idx_whatsapp_messages_retention",
+          "columns": [
+            "owner_id",
+            "purged_at",
+            "sent_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -11435,6 +11444,13 @@
         },
         "error": {
           "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "purged_at": {
+          "name": "purged_at",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

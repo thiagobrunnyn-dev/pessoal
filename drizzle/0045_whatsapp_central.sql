@@ -43,6 +43,7 @@ CREATE TABLE `whatsapp_messages` (
 CREATE UNIQUE INDEX `idx_whatsapp_messages_wa_id` ON `whatsapp_messages` (`owner_id`,`wa_message_id`);--> statement-breakpoint
 CREATE INDEX `idx_whatsapp_messages_chat` ON `whatsapp_messages` (`owner_id`,`chat_id`,`sent_at`);--> statement-breakpoint
 CREATE INDEX `idx_whatsapp_messages_pending` ON `whatsapp_messages` (`owner_id`,`analyzed_at`,`sent_at`);--> statement-breakpoint
+CREATE INDEX `idx_whatsapp_messages_retention` ON `whatsapp_messages` (`owner_id`,`purged_at`,`sent_at`);--> statement-breakpoint
 CREATE TABLE `whatsapp_outbox` (
 	`id` text PRIMARY KEY NOT NULL,
 	`owner_id` text NOT NULL,
@@ -57,6 +58,7 @@ CREATE TABLE `whatsapp_outbox` (
 	`sent_at` text,
 	`wa_message_id` text,
 	`error` text,
+	`purged_at` text,
 	FOREIGN KEY (`chat_id`) REFERENCES `whatsapp_chats`(`id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "whatsapp_outbox_status" CHECK("whatsapp_outbox"."status" IN ('queued','sending','sent','failed','cancelled'))
 );

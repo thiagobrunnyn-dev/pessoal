@@ -229,6 +229,43 @@ const message = (id, extra = {}) => ({chat_jid: GROUP, chat_name: 'Alojamento A'
     assert.equal(get('SELECT count(*) n FROM whatsapp_requests').n, 1);
     assert.equal((await n8n(read, 'GET', 'view=pending_analysis')).data.messages.length, 0);
   });
+  await test('retention covers the send queue and closed requests without needing new messages', async () => {
+    const old = new Date(Date.now() - (model.WHATSAPP_RETENTION_DAYS + 3) * 86400000).toISOString(), staleId = randomUUID();
+    // Mensagem vencida gravada direto no banco, como se a captura estivesse parada há meses.
+    run("INSERT INTO whatsapp_messages (id,owner_id,chat_id,wa_message_id,direction,sender_jid,sender_name,kind,body,has_media,sent_at,received_at) VALUES (?,?,?,?,'in','5591999990000@c.us','Colaborador QA','text','texto vencido',0,?,?)", staleId, OWNER, chat.id, 'stale-1', old, old);
+    const sent = get("SELECT id FROM whatsapp_outbox WHERE status='sent'"), queued = await panel('POST', '', {action: 'send', chat_id: chat.id, body: 'Aguardando n8n', request_id: randomUUID()});
+    run('UPDATE whatsapp_outbox SET created_at=? WHERE id IN (?,?)', old, sent.id, queued.data.id);
+    run('UPDATE whatsapp_requests SET updated_at=? WHERE id=?', old, request.id);
+    // Antes de qualquer limpeza, as consultas já não devolvem o que venceu.
+    const view = await panel('GET', 'view=chat&id=' + chat.id), hidden = view.data.messages.find(item => item.id === staleId);
+    assert.equal(hidden.body, null);
+    assert.equal(hidden.sender_name, null);
+    assert.ok(hidden.purged_at);
+    assert.equal(view.data.requests[0].requester_name, null);
+    assert.equal((await panel('GET', 'view=requests&status=done')).data.requests[0].requester_name, null);
+    assert.equal((await n8n(read, 'GET', 'view=pending_analysis')).data.messages.length, 0);
+    const before = (await panel('GET', 'view=outbox')).data.items;
+    assert.equal(before.find(item => item.id === sent.id).body, '');
+    assert.ok(before.find(item => item.id === sent.id).purged_at);
+    assert.equal(before.find(item => item.id === queued.data.id).body, 'Aguardando n8n');
+    assert.equal(get('SELECT body FROM whatsapp_messages WHERE id=?', staleId).body, 'texto vencido');
+    // A sincronização de grupos (de hora em hora) já remove do banco, sem mensagem nova.
+    assert.equal((await n8n(write, 'POST', '', {action: 'sync_chats', chats: [{jid: GROUP, name: 'Alojamento A'}]})).status, 200);
+    const purged = get('SELECT body,sender_jid,sender_name,purged_at FROM whatsapp_messages WHERE id=?', staleId);
+    assert.deepEqual([purged.body, purged.sender_jid, purged.sender_name], [null, null, null]);
+    assert.ok(purged.purged_at);
+    const outbox = get('SELECT body,purged_at,created_by_name FROM whatsapp_outbox WHERE id=?', sent.id);
+    assert.equal(outbox.body, '');
+    assert.ok(outbox.purged_at);
+    assert.equal(outbox.created_by_name, 'Owner QA');
+    assert.equal(get('SELECT requester_name FROM whatsapp_requests WHERE id=?', request.id).requester_name, null);
+    // Envio ainda na fila não é apagado: o n8n precisa do texto para enviar.
+    assert.equal(get('SELECT body FROM whatsapp_outbox WHERE id=?', queued.data.id).body, 'Aguardando n8n');
+    assert.equal((await panel('POST', '', {action: 'cancel_send', id: queued.data.id})).status, 200);
+    // A fila de envio (a cada minuto) também roda a limpeza: o envio cancelado e vencido perde o texto.
+    assert.deepEqual((await n8n(write, 'POST', '', {action: 'outbox_claim'})).data.messages, []);
+    assert.equal(get('SELECT body FROM whatsapp_outbox WHERE id=?', queued.data.id).body, '');
+  });
   await test('group screen returns history, requests and summaries; property link is validated', async () => {
     const view = await panel('GET', 'view=chat&id=' + chat.id);
     assert.equal(view.status, 200);

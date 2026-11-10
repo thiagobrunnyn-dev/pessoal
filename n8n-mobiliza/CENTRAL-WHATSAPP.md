@@ -20,7 +20,8 @@ Todos usam o endpoint `/api/integrations/v1/whatsapp`, implementado em `lib/what
 
 - Um grupo novo entra como "não registrado". Nenhuma mensagem dele é guardada até um administrador marcá-lo como acompanhado no painel, confirmando que os participantes foram avisados.
 - Conversas individuais nunca são registradas, só grupos.
-- O texto e o remetente de cada mensagem são apagados 90 dias depois (`WHATSAPP_RETENTION_DAYS` em `lib/whatsapp.ts`). Categorias, resumos e solicitações permanecem.
+- Após 90 dias (`WHATSAPP_RETENTION_DAYS` em `lib/whatsapp.ts`) são apagados o texto e o remetente de cada mensagem, o texto dos envios já finalizados e o nome do solicitante das solicitações encerradas. Categorias, resumos e o registro das solicitações permanecem.
+- A limpeza roda junto das ações agendadas do n8n (captura, sincronização de grupos e fila de envio). Antes mesmo de ela rodar, as consultas do painel e da API já não devolvem o que venceu. Com o n8n parado, o dado vencido fica oculto, mas só sai do banco quando um fluxo voltar a rodar.
 - Mídias (fotos, áudios, documentos) não são baixadas nem armazenadas; fica só o registro de que houve mídia.
 - A análise envia o texto das mensagens para a OpenAI. Nomes e telefones dos participantes não são enviados: na classificação vai só o nome do grupo e o texto; no resumo os participantes viram "Participante 1, 2…".
 - O acesso regional (por UF) não enxerga a Central.

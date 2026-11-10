@@ -288,14 +288,14 @@ function OutboxPanel({onDone}: {onDone: (message: string) => void}) {
   }
   return <section className="panel" aria-busy={loading}>
     <div className="section-heading"><h2>Envios</h2><button type="button" className="button secondary" disabled={loading} onClick={reload}><RefreshCw size={16}/>Atualizar</button></div>
-    <p className="muted">Mensagens escritas no painel. O n8n retira da fila a cada minuto; um envio sem confirmação em 10 minutos é marcado como falha e não é repetido sozinho.</p>
+    <p className="muted">Mensagens escritas no painel. O n8n retira da fila a cada minuto; um envio sem confirmação em 10 minutos é marcado como falha e não é repetido sozinho. O texto dos envios finalizados é apagado após 90 dias.</p>
     {error && <p className="error" role="alert">{error}</p>}
     {failure && <p className="error" role="alert">{failure}</p>}
     {!data ? <p role="status">{loading ? 'Carregando envios…' : 'Lista indisponível.'}</p>
       : !data.items.length ? <div className="empty"><h3>Nenhum envio registrado</h3><p>Abra um grupo acompanhado para escrever uma mensagem.</p></div>
         : data.items.map(item => <article key={item.id} className="wa-item">
           <div className="section-heading"><div><h3>{item.chat_name}</h3><p className="muted">{item.created_by_name} · {dateTime(item.created_at)}{item.sent_at ? ' · enviada ' + dateTime(item.sent_at) : ''}</p></div><span className={'pill ' + outboxPill[item.status]}>{OUTBOX_LABELS[item.status]}</span></div>
-          <p className="wa-text">{item.body}</p>
+          <p className="wa-text">{item.purged_at ? 'Texto apagado pelo prazo de retenção.' : item.body}</p>
           {item.error && <p className="error">{item.error}</p>}
           {item.status === 'queued' && <div className="form-actions"><button type="button" className="button secondary" disabled={!!busy} onClick={() => void cancel(item.id)}>Cancelar envio</button></div>}
         </article>)}

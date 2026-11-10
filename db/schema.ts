@@ -205,7 +205,7 @@ export const passwordSessions = sqliteTable('password_sessions', {
 }, table => [index('idx_password_session_expiry').on(table.expiresAt)]);
 
 // Central do WhatsApp: grupos, mensagens capturadas pelo n8n/WAHA, solicitações detectadas,
-// resumos diários e fila de envio. O texto das mensagens é apagado após 90 dias (lib/whatsapp.ts).
+// resumos diários e fila de envio. Texto e nomes de participantes são apagados após 90 dias (lib/whatsapp.ts).
 export const whatsappChats = sqliteTable('whatsapp_chats', {
   id: text('id').primaryKey(),
   ownerId: text('owner_id').notNull(),
@@ -248,6 +248,7 @@ export const whatsappMessages = sqliteTable('whatsapp_messages', {
   uniqueIndex('idx_whatsapp_messages_wa_id').on(table.ownerId, table.waMessageId),
   index('idx_whatsapp_messages_chat').on(table.ownerId, table.chatId, table.sentAt),
   index('idx_whatsapp_messages_pending').on(table.ownerId, table.analyzedAt, table.sentAt),
+  index('idx_whatsapp_messages_retention').on(table.ownerId, table.purgedAt, table.sentAt),
   check('whatsapp_message_direction', sql`${table.direction} IN ('in','out')`),
 ]);
 
@@ -306,6 +307,7 @@ export const whatsappOutbox = sqliteTable('whatsapp_outbox', {
   sentAt: text('sent_at'),
   waMessageId: text('wa_message_id'),
   error: text('error'),
+  purgedAt: text('purged_at'),
 }, table => [
   index('idx_whatsapp_outbox_status').on(table.ownerId, table.status, table.createdAt),
   check('whatsapp_outbox_status', sql`${table.status} IN ('queued','sending','sent','failed','cancelled')`),
