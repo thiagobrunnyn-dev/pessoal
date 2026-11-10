@@ -14,4 +14,4 @@ export function middleware(request:NextRequest){
   if(!path.startsWith('/api/'))response.headers.set('Content-Security-Policy',"frame-ancestors 'self'");
   return response;
 }
-export const config={matcher:['/','/entrar','/hoje','/acesso','/equipe','/pessoas','/hospedes','/gestao-a-vista','/cadastros','/prestadores','/servicos-laudos','/solicitacoes','/canal/:path*','/formularios/:path*','/veiculos','/arquivados','/entregas','/ocupacao','/mobilizacoes','/ordens','/centrais','/equipamentos/:path*','/imoveis/:path*','/limpeza/:path*','/api/:path*','/configuracoes/:path*','/mapa/editor']};
+export const config={matcher:['/','/entrar','/hoje','/acesso','/equipe','/pessoas','/hospedes','/gestao-a-vista','/cadastros','/prestadores','/servicos-laudos','/solicitacoes','/whatsapp','/canal/:path*','/formularios/:path*','/veiculos','/arquivados','/entregas','/ocupacao','/mobilizacoes','/ordens','/centrais','/equipamentos/:path*','/imoveis/:path*','/limpeza/:path*','/api/:path*','/configuracoes/:path*','/mapa/editor']};

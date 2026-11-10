@@ -41,6 +41,7 @@ import * as r39 from '../app/api/property-service-files/[id]/route';
 import * as r40 from '../app/api/guest-request-photos/[id]/route';
 import * as r41 from '../app/api/request-intake-files/[id]/route';
 import * as r42 from '../app/api/mural/files/[id]/route';
+import * as r43 from '../app/api/whatsapp/route';
 export type IntegrationHandler=(request:Request,context:{params:Promise<{id:string}>})=>Promise<Response>;
 export const integrationHandlers:Record<string,Partial<Record<'GET'|'POST',IntegrationHandler>>>={
   "control": r0,
@@ -86,4 +87,5 @@ export const integrationHandlers:Record<string,Partial<Record<'GET'|'POST',Integ
   "guest-request-photos/{id}": r40,
   "request-intake-files/{id}": r41,
   "mural/files/{id}": r42,
+  "whatsapp": r43,
 };
