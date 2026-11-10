@@ -29,10 +29,12 @@ export async function limitRedemption(request:Request,equipmentId:string){
  // If absent, fail conservatively into a shared unknown-client bucket.
  const ip=request.headers.get('cf-connecting-ip')||'unknown';const now=epoch(),window=Math.floor(now/900),ends=(window+1)*900;
  const client=await sha256('visit-login:'+ip);
- if(await increment(`global:${window}`,ends)>600)throw new RequestError('Muitas tentativas. Aguarde até 15 minutos e tente novamente.',429);
+ // Per-client counters run first: a client already over its own limit is rejected before it can
+ // consume the shared asset/global budgets, so one caller cannot lock everyone else out.
  if(await increment(`client:${client}:${window}`,ends)>15)throw new RequestError('Muitas tentativas. Aguarde até 15 minutos e tente novamente.',429);
  if(await increment(`pair:${client}:${equipmentId}:${window}`,ends)>5)throw new RequestError('Muitas tentativas. Aguarde até 15 minutos e tente novamente.',429);
  if(await increment(`asset:${equipmentId}:${window}`,ends)>20)throw new RequestError('Muitas tentativas. Aguarde até 15 minutos e tente novamente.',429);
+ if(await increment(`global:${window}`,ends)>600)throw new RequestError('Muitas tentativas. Aguarde até 15 minutos e tente novamente.',429);
  // Bounded cleanup of expired counters only; no grant/session/audit data is deleted.
  await db().prepare('DELETE FROM visit_rate_limits WHERE id IN (SELECT id FROM visit_rate_limits WHERE expires_at<? LIMIT 100)').bind(now-900).run();
 }

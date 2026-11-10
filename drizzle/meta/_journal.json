@@ -309,6 +309,13 @@
       "when": 1794330433965,
       "tag": "0043_password_access",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1794338356518,
+      "tag": "0044_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }
