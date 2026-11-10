@@ -2,9 +2,11 @@ import {runWithRegionalAccess} from "../lib/regional-access";
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
+import { sitesPasswordIdentity } from "../lib/sites-password-identity";
+import { resolvePasswordSession } from "../lib/supabase-auth";
 
 export default {
-  fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
+  async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
     let binding = ctx.props?.CONNECTORS;
     // Local preview emulates the same request-scoped capability. This branch and
     // the auxiliary service binding are absent from production builds.
@@ -25,6 +27,10 @@ export default {
       };
     }
     if(!env.DB)return new Response('Serviço temporariamente indisponível.',{status:503});
+    const passwordMode = env.MOBILIZA_SUPABASE_AUTH === '1';
+    const passwordIdentity = passwordMode ? await resolvePasswordSession(request, env).catch(() => null) : null;
+    // The Sites dispatcher still supplies native identity for legacy sessions.
+    request = sitesPasswordIdentity(request, passwordIdentity, passwordMode);
     return runWithRegionalAccess(request, env.DB, () => runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx)));
   },
 };

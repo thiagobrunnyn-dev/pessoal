@@ -1,6 +1,5 @@
 import {bucket, first} from './maintenance';
-import {getOwnerUser} from './owner-access';
-import {getOperator, recheckOperator, type Operator} from './app-access';
+import {getAdministrator, getOperator, recheckOperator, type Operator} from './app-access';
 import {boundedJson} from './http-security';
 import {createMapsApi, MAPS_CONFIG_OBJECT, MapsError, parseStoredConfig, type ConfigStore} from './google-maps-policy';
 
@@ -24,7 +23,7 @@ const store: ConfigStore = {
   },
 };
 export const googleMapsApi = createMapsApi({
-  getOwnerId: async () => (await getOwnerUser())?.userId ?? null,
+  getAdministrator,
   getOperator,
   recheckOperator: op => recheckOperator(op as Operator),
   propertyAllowed: async (op, propertyId) => !!await first(

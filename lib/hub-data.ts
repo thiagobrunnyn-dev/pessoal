@@ -78,7 +78,7 @@ export async function hubData(ownerId:string,query=new URLSearchParams()):Promis
  ]);
  if(!counts||!occupancy)throw new Error('Resumo operacional indisponível');
  const services:ServiceChartRow[]=(['open','in_progress','pending','completed','not_performed'] as ServiceStatus[]).map(status=>({status,orders:0,air:0,cleaning:0,total:0}));
- const statusMap:Record<string,ServiceStatus>={open:'open',in_progress:'in_progress',paused:'pending',with_pending:'pending',completed:'completed',not_performed:'not_performed'};
+ const statusMap:Record<string,ServiceStatus>={open:'open',in_progress:'in_progress',pending:'pending',paused:'pending',with_pending:'pending',completed:'completed',not_performed:'not_performed'};
  const serviceRows=JSON.parse(counts.services_json||'[]');if(!Array.isArray(serviceRows))throw new Error('Situação dos serviços indisponível');
  for(const row of serviceRows){const source=row.source as ServiceSource,status=statusMap[row.status];if(!['orders','air','cleaning'].includes(source)||!status)throw new Error('Situação dos serviços inconsistente');const bucket=services.find(s=>s.status===status)!;bucket[source]+=number(row.total);bucket.total+=number(row.total);}
  const pending={orders:0,air:0,cleaning:0};for(const row of services)if(['open','in_progress','pending'].includes(row.status))for(const source of ['orders','air','cleaning'] as ServiceSource[])pending[source]+=row[source];

@@ -1,9 +1,12 @@
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {RequestError} from './http-security';
+import {SITE_OWNER_ID} from './owner-access';
+import {isRegionalMember,isSupabaseMemberId} from './member-roles';
 // This restriction supplements the app's existing owner, operator and bearer authorization.
 // The platform supplies these identity headers; no email or region is accepted from forms.
 export const REGIONAL_EMAIL='manutencao@example.invalid';
 export const REGION_POLICY={states:['PA'],allWorksites:true} as const;
+const REGIONAL_MEMBER_SQL = "role='maintenance_lead' AND (email='manutencao@example.invalid' OR user_id LIKE 'supabase:%')";
 type RegionalContext={regional:boolean;permitted:boolean;epoch:number;memberId:string|null;revision:number};
 const context=new AsyncLocalStorage<RegionalContext>();
 export const isRegionalRequest=()=>context.getStore()?.regional===true;
@@ -14,10 +17,13 @@ export async function runWithRegionalAccess<T>(request:Request,db:D1Database,run
  const uid=request.headers.get('oai-authenticated-user-id'),email=(request.headers.get('oai-authenticated-user-email')||'').toLowerCase();
  let member:any=null;
  // Email only selects the restrictive path. Operational access still requires the bound approved ID.
- if(uid&&uid!=='CONFIGURE_VERIFIED_SITE_OWNER_ID')member=await db.prepare("SELECT user_id,email,status,role,revision FROM app_members WHERE user_id=? AND (email=? OR role='maintenance_lead')").bind(uid,REGIONAL_EMAIL).first();
- const regional=email===REGIONAL_EMAIL||member?.email===REGIONAL_EMAIL;
+ if(uid&&uid!==SITE_OWNER_ID)member=await db.prepare("SELECT user_id,email,status,role,revision FROM app_members WHERE user_id=? AND (email=? OR role='maintenance_lead')").bind(uid,REGIONAL_EMAIL).first();
+ const activeGlobalAdmin=member?.role==='admin'&&member.status==='active'&&isSupabaseMemberId(member.user_id);
+ const regional=!activeGlobalAdmin&&(email===REGIONAL_EMAIL||member?.email===REGIONAL_EMAIL||
+  (member?.role==='maintenance_lead'&&isSupabaseMemberId(member.user_id)));
  if(!regional)return await context.run({regional:false,permitted:false,epoch:-1,memberId:null,revision:-1},run);
- const permitted=!!(member&&member.email===REGIONAL_EMAIL&&member.role==='maintenance_lead'&&member.status==='active');
+ const permitted=!!(member&&member.role==='maintenance_lead'&&member.status==='active'&&
+  (member.email===REGIONAL_EMAIL||isSupabaseMemberId(member.user_id)));
  const epoch=permitted?await db.prepare('SELECT version FROM regional_epoch WHERE id=1').first<{version:number}>():null;
  const c={regional:true,permitted:permitted&&!!epoch,epoch:epoch?.version??-1,memberId:member?.user_id??null,revision:member?.revision??-1};
  return await context.run(c,async()=>{
@@ -27,7 +33,10 @@ export async function runWithRegionalAccess<T>(request:Request,db:D1Database,run
   return await run();
  });
 }
-export function ensureRegionalContext(email:string){if(email===REGIONAL_EMAIL&&!isRegionalRequest())throw new RequestError('Não foi possível validar o escopo do acesso. Atualize a página.',403);}
+export function ensureRegionalContext(email:string,userId?:string,role?:string){
+ if(((role!=='admin'&&email===REGIONAL_EMAIL)||isRegionalMember(userId??'',email,role??'',REGIONAL_EMAIL))&&!isRegionalRequest())
+  throw new RequestError('Não foi possível validar o escopo do acesso. Atualize a página.',403);
+}
 export function scopedSelect(sql:string):string{
  const c=context.getStore();if(!c?.regional)return sql;
  const syntax=sql.replace(/'(?:''|[^'])*'/g,"''");
@@ -41,11 +50,11 @@ export function scopedSelect(sql:string):string{
 export function scopedReadArgs(args:unknown[]){const c=context.getStore();return c?.regional?[c.memberId??'',c.revision,...args]:args;}
 export function regionCTEs(permitted:boolean,liveMember=false){
  const state=permitted?"state_code='PA'"+(liveMember?' AND EXISTS(SELECT 1 FROM __regional_auth)':''):"0";
- const list:string[]=liveMember?["__regional_auth AS (SELECT 1 FROM main.app_members WHERE user_id=? AND revision=? AND status='active' AND email='manutencao@example.invalid' AND role='maintenance_lead')"]:[];const add=(name:string,where:string,cols='t.*')=>list.push(`${name} AS (SELECT t.rowid AS rowid,${cols} FROM main.${name} t WHERE ${where})`);
+ const list:string[]=liveMember?[`__regional_auth AS (SELECT 1 FROM main.app_members WHERE user_id=? AND revision=? AND status='active' AND ${REGIONAL_MEMBER_SQL})`]:[];const add=(name:string,where:string,cols='t.*')=>list.push(`${name} AS (SELECT t.rowid AS rowid,${cols} FROM main.${name} t WHERE ${where})`);
  const snap=(type:string,id='t.id')=>`EXISTS(SELECT 1 FROM regional_snapshots rs WHERE rs.entity_type='${type}' AND rs.entity_id=${id})`;
  add('regional_snapshots',state+" AND (previous_state_code IS NULL OR previous_state_code='PA')");
  add('properties',state);
- add('occupancy_imports',"t.actor_user_id IN(SELECT user_id FROM main.app_members WHERE email='manutencao@example.invalid' AND role='maintenance_lead' AND status='active')"+(liveMember?' AND EXISTS(SELECT 1 FROM __regional_auth)':''));
+ add('occupancy_imports',`t.actor_user_id IN(SELECT user_id FROM main.app_members WHERE ${REGIONAL_MEMBER_SQL} AND status='active')`+(liveMember?' AND EXISTS(SELECT 1 FROM __regional_auth)':''));
  add('property_creation_requests',"t.state_code='PA' AND EXISTS(SELECT 1 FROM properties p WHERE p.id=t.property_id AND p.owner_id=t.owner_id)");
  add('property_front_photo_assets',"t.state_code='PA' AND t.property_id IN(SELECT id FROM properties)");
  add('equipment','t.property_id IN(SELECT id FROM properties)',`t.id,t.owner_id,t.public_history_enabled,t.public_history_revision,t.archived_at,t.archive_event_id,t.property_id,t.name,t.location,t.brand_model,t.serial,CASE WHEN ${snap('identification')} THEN t.identification_photo_key END identification_photo_key,CASE WHEN ${snap('identification')} THEN t.identification_photo_type END identification_photo_type,CASE WHEN ${snap('identification')} THEN t.identification_photo_size END identification_photo_size,CASE WHEN ${snap('identification')} THEN t.identification_photo_created_at END identification_photo_created_at,CASE WHEN ${snap('baseline')} THEN t.baseline_date END baseline_date,t.checklist,t.revision,t.last_change_id,t.created_at`);
@@ -125,5 +134,5 @@ export function regionCTEs(permitted:boolean,liveMember=false){
 // Call only AFTER the target was read through the scoped facade. This returns no audit content.
 export async function regionalCorrectionReplay(db:D1Database,owner:string,entity:string,id:string,requestId:string){
  const c=context.getStore();if(!c?.regional||!c.permitted)return null;
- return db.prepare("SELECT id,request_fingerprint FROM correction_events WHERE owner_id=? AND entity_type=? AND entity_id=? AND request_id=? AND actor_user_id=? AND EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND email=? AND role='maintenance_lead' AND status='active') AND EXISTS(SELECT 1 FROM regional_epoch WHERE id=1 AND version=?)").bind(owner,entity,id,requestId,c.memberId,c.memberId,c.revision,REGIONAL_EMAIL,c.epoch).first();
+ return db.prepare(`SELECT id,request_fingerprint FROM correction_events WHERE owner_id=? AND entity_type=? AND entity_id=? AND request_id=? AND actor_user_id=? AND EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND ${REGIONAL_MEMBER_SQL} AND status='active') AND EXISTS(SELECT 1 FROM regional_epoch WHERE id=1 AND version=?)`).bind(owner,entity,id,requestId,c.memberId,c.memberId,c.revision,c.epoch).first();
 }

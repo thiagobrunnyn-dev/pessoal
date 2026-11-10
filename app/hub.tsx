@@ -12,7 +12,7 @@ import './hub.css';
 const DashboardMetrics=dynamic(()=>import('./dashboard-metrics'),{loading:()=> <p className="muted" role="status">Carregando indicadores…</p>});
 import type {HubSummary as Summary} from '../lib/hub-data';
 const displayDate=(v:string)=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC'});
-export default function Hub({displayName,accessTitle='Sócio-administrador',canManageAccess=true,regional=false,initialSummary=null,initialMetrics=null,initialQuery=''}:{initialQuery?:string;initialSummary?:any;initialMetrics?:any;displayName:string;accessTitle?:string;canManageAccess?:boolean;regional?:boolean}){
+export default function Hub({displayName,accessTitle='Sócio-administrador',canManageAccess=true,passwordSession=false,regional=false,initialSummary=null,initialMetrics=null,initialQuery=''}:{initialQuery?:string;initialSummary?:any;initialMetrics?:any;displayName:string;accessTitle?:string;canManageAccess?:boolean;passwordSession?:boolean;regional?:boolean}){
  const [data,setData]=useState<Summary|null>(initialSummary),[loading,setLoading]=useState(!initialSummary),[error,setError]=useState(''),[reloadKey,setReloadKey]=useState(0),[indicatorsOpen,setIndicatorsOpen]=useState(false),[query,setQuery]=useState(initialQuery),[options,setOptions]=useState<OperationFilterOptions|null>(initialSummary?.filterOptions||null);const generation=useRef(0),controller=useRef<AbortController|null>(null),firstLoad=useRef(true),queryRef=useRef(query);queryRef.current=query;
  let filters={...EMPTY_FILTERS};try{filters=parseOperationFilters(new URLSearchParams(query));}catch{/* Invalid URL is kept for an explicit error/clear, never silently applied as global. */}
  async function refresh(currentQuery=query){controller.current?.abort();controller.current=new AbortController();const n=++generation.current,request=controller.current,timer=setTimeout(()=>request.abort(),25000);setLoading(true);setData(null);setError('');try{const expected=parseOperationFilters(new URLSearchParams(currentQuery));const r=await fetch('/api/hub'+(currentQuery?'?'+currentQuery:''),{cache:'no-store',signal:request.signal});const d=await r.json() as Summary&{error?:string};if(n!==generation.current)return;if(!r.ok)throw new Error(d.error||'Resumo indisponível.');if(!d.filters||!d.filterOptions||FILTER_KEYS.some(key=>d.filters[key]!==expected[key]))throw new Error('Não foi possível conferir o recorte. Atualize a página.');setData(d);setOptions(d.filterOptions);}catch(e){if(n===generation.current){setOptions(null);setError((e as Error).name==='AbortError'?'A consulta demorou. Tente atualizar mantendo os filtros.':(e as Error).message);}}finally{clearTimeout(timer);if(n===generation.current)setLoading(false);}}
@@ -27,7 +27,7 @@ export default function Hub({displayName,accessTitle='Sócio-administrador',canM
  ] as const;
 
  return <div className="hub-workspace">
-  <header className="hub-compact-header no-print"><HubNavigation displayName={displayName} accessTitle={accessTitle} regional={regional}/><a className="hub-mobile-brand" href="/" aria-label="MOBILIZA GESTÃO, visão geral"><img src="/icons/symbol-192-v54.png" width={36} height={36} alt=""/><span>MOBILIZA GESTÃO</span></a><div className="hub-header-options"><span className="hub-header-label">Mobiliza Facilities</span><AdminMenu compact canManageAccess={canManageAccess} canManageCatalog={!regional}/></div></header>
+  <header className="hub-compact-header no-print"><HubNavigation displayName={displayName} accessTitle={accessTitle} regional={regional}/><a className="hub-mobile-brand" href="/" aria-label="MOBILIZA GESTÃO, visão geral"><img src="/icons/symbol-192-v54.png" width={36} height={36} alt=""/><span>MOBILIZA GESTÃO</span></a><div className="hub-header-options"><span className="hub-header-label">Mobiliza Facilities</span>{passwordSession&&<PasswordSignOut/>}<AdminMenu compact canManageAccess={canManageAccess} canManageCatalog={!regional}/></div></header>
   <main className="hub-compact-main"><section className="hub-intro"><div><div className="eyebrow">MOBILIZA GESTÃO</div><h1>Visão Geral da Operação</h1><p>{regional?'Imóveis, hospedagem e serviços do Pará.':'Imóveis, hospedagem e serviços.'}</p></div><div className="hub-intro-actions"><a className="button" href="/hoje"><CalendarDays size={18}/>Tarefas de hoje</a><button type="button" className="button secondary" disabled={loading} onClick={()=>{void refresh(query);setReloadKey(k=>k+1);}}><RefreshCw size={17} className={loading?'spin':''}/>{loading?'Atualizando…':'Atualizar'}</button></div></section>
   <HubFilters hasQuery={!!query} filters={filters} options={options} loading={loading} onChange={selectFilter} onClear={()=>updateQuery('')}/>
   {error&&<p className="error" role="alert">{error}</p>}
@@ -40,5 +40,30 @@ export default function Hub({displayName,accessTitle='Sócio-administrador',canM
   <details className="hub-indicators" onToggle={event=>setIndicatorsOpen(event.currentTarget.open)}><summary><BarChart3 size={20}/><span>Ver indicadores dos controles</span><small>Dia, semana, quinzena e mês</small></summary>{indicatorsOpen&&<><DashboardMetrics reloadKey={reloadKey} initialData={query?null:initialMetrics} filterQuery={query}/>{data&&<p className="hub-history-total">Histórico das centrais: {data.counts.completed} serviços concluídos registrados, excluindo testes.</p>}</>}</details>
   <footer className="hub-compact-footer">{data&&<p>Resumo atualizado em {new Date(data.asOf).toLocaleString('pt-BR',{timeZone:'America/Belem'})} (Belém).</p>}<details><summary>Avisos e acesso</summary><p>Novidades das centrais e da lavanderia: verificação horária, das 8h às 20h (Belém), no chat. Alertas das centrais: 5 dias antes do vencimento.</p><p>O acesso dos técnicos continua pelo QR e código de visita. A Lavanderia abre o controle existente, com permissão própria.</p></details></footer>
   </main>
+ </div>;
+}
+
+function PasswordSignOut() {
+ const [busy, setBusy] = useState(false);
+ const [error, setError] = useState(false);
+
+ async function signOut() {
+  setBusy(true);
+  setError(false);
+  try {
+   const response = await fetch('/api/password-session/logout', {
+    method: 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+   });
+   if (!response.ok) throw new Error();
+   window.location.replace('/');
+  } catch {
+   setError(true);
+   setBusy(false);
+  }
+ }
+
+ return <div>
+  <button className="text-button" type="button" disabled={busy} onClick={() => void signOut()}>{busy ? 'Saindo…' : 'Sair'}</button>
+  {error && <small role="alert">Não foi possível sair. Tente novamente.</small>}
  </div>;
 }

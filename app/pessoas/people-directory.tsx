@@ -2,6 +2,7 @@
 import {filterPeople,emptyPeopleFilters,missingPersonData,type PeopleFilters} from '../../lib/people-filters';
 import PeopleFilterControls from './people-filter-controls';
 import PersonAssignmentFields,{type PersonClient,type PersonCenter,type PersonCatalog} from './person-assignment-fields';
+import {MEMBER_ROLES} from '../../lib/member-roles';
 import {personNumber} from '../../lib/person-number';
 import {uppercasePersonText} from '../../lib/person-text';
 import {uppercaseFieldEvent} from './uppercase-field';
@@ -18,7 +19,7 @@ import PeopleCardMenu from './people-card-menu';
 import PersonPrivateFields, {type PrivatePersonFields} from './person-private-fields';
 
 const CityPicker = lazy(() => import('./city-picker'));
-const ACCOUNT_ROLES: Record<string, string> = {owner: 'Sócio-administrador', general_manager: 'Gerente geral', maintenance_lead: 'Encarregado de manutenção', administrative_analyst: 'Analista administrativo'};
+const ACCOUNT_ROLES: Record<string, string> = {owner: 'Sócio-administrador', ...MEMBER_ROLES};
 type Directory = 'collaborator' | 'technician' | 'supervisor' | 'guest';
 type Action = 'create' | 'update' | 'archive' | 'restore';
 type Profile = {

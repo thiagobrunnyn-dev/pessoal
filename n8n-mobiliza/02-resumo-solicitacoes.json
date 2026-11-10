@@ -1,0 +1,88 @@
+{
+  "name": "Mobiliza — resumo de solicitações",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2697c936-81b3-47e2-a02b-1a8530c64fbc",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://mobilizafacilities.com.br/api/integrations/v1/hub",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "id": "e8514145-dc5e-4ba7-8c16-4a8d08105b36",
+      "name": "Consultar resumo do painel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const kinds = ['maintenance', 'purchase'];\nconst statusKeys = ['received', 'reviewing', 'linked_order', 'approved', 'closed'];\nconst items = $input.all();\nconst rows = items.length === 1 ? items[0].json.requests : null;\nconst fail = () => { throw new Error('Formato do resumo de solicitações inesperado. Confira o contrato da API.'); };\nconst count = value => Number.isSafeInteger(value) && value >= 0 ? value : fail();\nif (!Array.isArray(rows) || rows.length !== kinds.length) fail();\n\nreturn kinds.map(kind => {\n  const matches = rows.filter(row => row?.kind === kind);\n  if (matches.length !== 1) fail();\n  const row = matches[0];\n  const statuses = Object.fromEntries(statusKeys.map(status => [status, count(row.statuses?.[status])]));\n  const total = count(row.total);\n  const due_today = count(row.due_today);\n  const past_due = count(row.past_due);\n  if (Object.values(statuses).reduce((sum, value) => sum + value, 0) !== total || due_today + past_due > total) fail();\n  return { json: { kind, total, statuses, due_today, past_due } };\n});"
+      },
+      "id": "d0322efd-99fd-4133-9393-08eebc1cbe48",
+      "name": "Projetar totais das solicitações",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Consultar resumo do painel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar resumo do painel": {
+      "main": [
+        [
+          {
+            "node": "Projetar totais das solicitações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Belem",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  }
+}

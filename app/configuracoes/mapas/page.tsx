@@ -1,7 +1,7 @@
-import {requireOwnerUser} from '../../../lib/owner-access';
+import {requireAdministrator} from '../../../lib/app-access';
 import GoogleMapsSettings from './settings';
 export const dynamic = 'force-dynamic';
 export default async function Page() {
-  await requireOwnerUser('/configuracoes/mapas');
+  await requireAdministrator('/configuracoes/mapas');
   return <GoogleMapsSettings/>;
 }

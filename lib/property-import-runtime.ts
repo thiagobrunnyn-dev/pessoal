@@ -1,4 +1,4 @@
-import {MEMBER_INVITATIONS, getOperator, operatorGuard, recheckOperator, type Operator} from './app-access';
+import {MEMBER_INVITATIONS, canAdminister, getOperator, operatorGuard, recheckOperator, type Operator} from './app-access';
 import {db} from './maintenance';
 import {requireGlobalCatalog} from './regional-access';
 import {createPropertyImportApi} from './property-import-api';
@@ -8,7 +8,7 @@ import {createPropertyImportApi} from './property-import-api';
 const globalInvitations = MEMBER_INVITATIONS.filter(member => member.role === 'general_manager' || member.role === 'administrative_analyst');
 export function propertyImportGlobalGuard(op: Operator) {
   const auth = operatorGuard(op);
-  if (op.role === 'owner') return auth;
+  if (canAdminister(op) || op.integrationId) return auth;
   return {sql: '(' + auth.sql + ') AND EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND status=\'active\' AND (' + globalInvitations.map(() => '(email=? AND role=?)').join(' OR ') + '))',
     args: [...auth.args, op.actor.userId, op.revision, ...globalInvitations.flatMap(member => [member.email, member.role])]};
 }

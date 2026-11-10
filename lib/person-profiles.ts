@@ -1,7 +1,8 @@
 import {all,first,db,bucket} from './maintenance';
-import {operatorGuard,recheckOperator,type Operator} from './app-access';
+import {canAdminister,operatorGuard,recheckOperator,type Operator} from './app-access';
 import {SITE_OWNER_ID} from './owner-access';
 import {isRegionalRequest,REGIONAL_EMAIL} from './regional-access';
+import {isRegionalMember} from './member-roles';
 import {BRAZIL_STATES} from './brazil-states';
 import {RequestError} from './http-security';
 import {sanitizePhoto} from './photo-privacy';
@@ -18,7 +19,6 @@ const SNAPSHOT_FIELDS=['directory','name_pending','display_name','job_title','st
 const PRIVATE_FIELDS=['private_rg','private_cpf','private_contact'] as const;
 type PrivateField=typeof PRIVATE_FIELDS[number];
 const MAX_PHOTO_SIZE=4*1024*1024;
-const ownsAccounts=(op:Operator)=>op.actor.userId===SITE_OWNER_ID;
 const snapshot=(row:Row)=>Object.fromEntries(SNAPSHOT_FIELDS.map(key=>[key,row[key]??null]));
 const digest=async(value:string|Uint8Array)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',typeof value==='string'?new TextEncoder().encode(value):value as Uint8Array<ArrayBuffer>))].map(v=>v.toString(16).padStart(2,'0')).join('');
 
@@ -66,7 +66,7 @@ function visibleProfile(row:Row,canLink:boolean){
 }
 
 export async function personDirectory(op:Operator,guests=false){
- const canLink=ownsAccounts(op);
+ const canLink=canAdminister(op);
  const [rows,supervisors,members,catalog]=await Promise.all([
   all('SELECT p.id,p.control_number,p.directory,p.name_pending,p.display_name,p.job_title,p.state_code,p.city,p.client_id,p.cost_center_id,p.supervisor_profile_id,p.supervisor_account_user_id,p.app_member_user_id,p.current_photo_asset_id,p.status,p.revision,p.created_at,p.updated_at,c.id visible_client_id,c.name visible_client_name,c.entity_type visible_client_type,c.archived_at client_archived_at,cc.id visible_center_id,cc.name visible_center_name,cc.archived_at center_archived_at FROM person_profiles p LEFT JOIN clients c ON c.id=p.client_id AND c.owner_id=p.owner_id LEFT JOIN cost_centers cc ON cc.id=p.cost_center_id AND cc.owner_id=p.owner_id AND cc.client_id=p.client_id WHERE p.owner_id=? AND p.directory '+(guests?'=':'<>')+" 'guest' ORDER BY p.display_name,p.id",op.ownerId),
   all("SELECT id,display_name,state_code,revision FROM person_profiles WHERE owner_id=? AND status='active' AND directory<>'guest' ORDER BY display_name,id",op.ownerId),
@@ -75,7 +75,7 @@ export async function personDirectory(op:Operator,guests=false){
  ]);
  const supervisor_choices=await supervisorOptions(rows);
  await recheckOperator(op);const auth=operatorGuard(op);if(!await first("SELECT 1 allowed WHERE "+auth.sql,...auth.args))throw new RequestError("O acesso mudou. Atualize a lista.",409);
- return {profiles:rows.map(row=>visibleProfile(row,canLink)),catalog,can_initialize_numbers:!guests&&!isRegionalRequest(),supervisors,supervisor_options:supervisor_choices,regional:isRegionalRequest(),can_link_accounts:canLink&&!guests,...(members?{eligible_members:[{user_id:SITE_OWNER_ID,display_name:op.actor.fullName||op.actor.displayName,role:'owner'},...members.filter(row=>row.user_id!==SITE_OWNER_ID)]}:{})};
+ return {profiles:rows.map(row=>visibleProfile(row,canLink)),catalog,can_initialize_numbers:!guests&&!isRegionalRequest(),supervisors,supervisor_options:supervisor_choices,regional:isRegionalRequest(),can_link_accounts:canLink&&!guests,...(members?{eligible_members:[{user_id:SITE_OWNER_ID,display_name:op.role==='owner'?(op.actor.fullName||op.actor.displayName):'Sócio-administrador',role:'owner'},...members.filter(row=>row.user_id!==SITE_OWNER_ID)]}:{})};
 }
 
 export async function personPrivateDetails(op:Operator,id:string){
@@ -133,7 +133,7 @@ export async function savePersonProfile(op:Operator,form:FormData,context?:{gues
  // Read the target through the scoped facade BEFORE looking up an idempotency event.
  const original=creating?null:await first('SELECT * FROM person_profiles WHERE id=? AND owner_id=?',suppliedId,op.ownerId);
  if(!creating&&!original)throw new RequestError('Pessoa não encontrada.',404);
- const regional=isRegionalRequest(),canLink=ownsAccounts(op);
+ const regional=isRegionalRequest(),canLink=canAdminister(op);
  if(regional&&original?.state_code!=='PA'&&!creating)throw new RequestError('Pessoa não encontrada.',404);
  if(!editing&&form.getAll('photo').some(value=>value instanceof File&&value.size>0))throw new RequestError('Altere a foto pela edição do cadastro.');
  const photo=editing?await readPhoto(form):null;
@@ -154,7 +154,7 @@ export async function savePersonProfile(op:Operator,form:FormData,context?:{gues
   let accountId=original?.app_member_user_id||null;
   if(form.has('app_member_user_id')){
    const proposed=field(form,'app_member_user_id',200)||null;
-   if(!canLink&&proposed!==accountId)throw new RequestError('Somente o sócio-administrador pode alterar o vínculo com uma conta.',403);
+   if(!canLink&&proposed!==accountId)throw new RequestError('Somente administradores podem alterar o vínculo com uma conta.',403);
    if(canLink)accountId=proposed;
   }
   if(form.has('name_pending')&&!['yes','no'].includes(String(form.get('name_pending'))))throw new RequestError('Confira a indicação do nome.');
@@ -201,12 +201,12 @@ export async function savePersonProfile(op:Operator,form:FormData,context?:{gues
  guards.push(...relationshipGuards.guards);guardArgs.push(...relationshipGuards.args);
  const accountChanged=next.app_member_user_id!==(original?.app_member_user_id||null);
  if(accountChanged&&next.app_member_user_id){
-  if(!canLink)throw new RequestError('Somente o sócio-administrador pode vincular uma conta.',403);
+  if(!canLink)throw new RequestError('Somente administradores podem vincular uma conta.',403);
   if(next.app_member_user_id!==SITE_OWNER_ID){
    const member=await first("SELECT user_id,email,role,revision FROM app_members WHERE user_id=? AND status='active'",next.app_member_user_id);
    if(!member)throw new RequestError('Selecione o ID exato de uma conta ativa.');
    guards.push("EXISTS(SELECT 1 FROM app_members WHERE user_id=? AND revision=? AND email=? AND role=? AND status='active')");guardArgs.push(member.user_id,member.revision,member.email,member.role);
-   if(member.email===REGIONAL_EMAIL&&member.role==='maintenance_lead'){
+   if(isRegionalMember(member.user_id,member.email,member.role,REGIONAL_EMAIL)){
     // A later account binding must not circumvent the supervisor's PA limit.
     // Only IDs are inspected here; this path already requires the exact owner.
     if(await db().prepare("SELECT id FROM person_profiles WHERE owner_id=? AND supervisor_profile_id=? AND status='active' AND state_code IS NOT 'PA' LIMIT 1").bind(op.ownerId,id).first())throw new RequestError('Reatribua as pessoas fora do Pará antes de vincular esta conta regional.',409);

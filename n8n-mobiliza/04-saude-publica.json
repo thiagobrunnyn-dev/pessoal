@@ -1,0 +1,153 @@
+{
+  "name": "Mobiliza — saúde das páginas públicas",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8880d3d2-8a90-442d-931e-f384e400f206",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "9e964e3c-179d-4e48-8466-bc0ff76f24f7",
+      "name": "A cada hora (opcional)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        90
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const origin = 'https://mobilizafacilities.com.br';\nconst routes = [\n  { key: 'home', path: '/' },\n  { key: 'login', path: '/entrar' },\n  { key: 'maintenance', path: '/formularios/manutencao' },\n  { key: 'purchase', path: '/formularios/compra' },\n];\nreturn routes.map(route => ({ json: { ...route, url: origin + route.path } }));"
+      },
+      "id": "f989098a-ae29-4280-9cae-7c966e6b5aeb",
+      "name": "Rotas públicas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "none",
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "44b6e041-375d-444e-98d3-29998937d7fc",
+      "name": "Consultar páginas públicas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const routes = $('Rotas públicas').all();\nconst responses = new Map();\nfor (const [index, item] of $input.all().entries()) {\n  const paired = Array.isArray(item.pairedItem) ? item.pairedItem[0] : item.pairedItem;\n  const position = Number.isSafeInteger(paired?.item) ? paired.item : index;\n  if (!responses.has(position)) responses.set(position, item.json);\n}\n\nconst hasLink = (html, path) => {\n  const links = [...html.matchAll(/\\bhref\\s*=\\s*[\"']([^\"']+)[\"']/gi)];\n  return links.some(link => link[1].split('?')[0] === path);\n};\nconst hasInput = (html, type) => new RegExp('<input\\\\b[^>]*\\\\btype\\\\s*=\\\\s*[\"\\']' + type + '[\"\\']', 'i').test(html);\nconst looksRight = (html, key) => {\n  if (key === 'home') return hasLink(html, '/entrar') && hasLink(html, '/formularios/manutencao') && hasLink(html, '/formularios/compra');\n  if (key === 'login') return hasInput(html, 'email') && hasInput(html, 'password');\n  if (key === 'maintenance') return /solicitação de manutenção|canal de manutenção/i.test(html);\n  if (key === 'purchase') return /pedido de compra/i.test(html);\n  return false;\n};\n\nconst checks = routes.map(({ json: route }, index) => {\n  const response = responses.get(index);\n  const status_code = Number.isSafeInteger(response?.statusCode) ? response.statusCode : null;\n  const body = typeof response?.body === 'string' ? response.body : typeof response?.data === 'string' ? response.data : '';\n  const result = status_code === null ? 'transport_error' : status_code !== 200 ? 'http_error' : looksRight(body, route.key) ? 'ok' : 'content_mismatch';\n  return { path: route.path, status_code, result };\n});\nif (checks.length !== 4 || checks.some(check => check.result !== 'ok')) {\n  const summary = checks.map(check => check.path + ' ' + (check.status_code ?? 'sem resposta') + ' ' + check.result).join(' | ');\n  throw new Error('Saúde pública indisponível — ' + summary);\n}\nreturn [{ json: { healthy: true, checks } }];"
+      },
+      "id": "6272cb24-01fc-4615-9ee2-f328a5ac926f",
+      "name": "Avaliar saúde pública",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Rotas públicas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A cada hora (opcional)": {
+      "main": [
+        [
+          {
+            "node": "Rotas públicas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rotas públicas": {
+      "main": [
+        [
+          {
+            "node": "Consultar páginas públicas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar páginas públicas": {
+      "main": [
+        [
+          {
+            "node": "Avaliar saúde pública",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Belem",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  }
+}
