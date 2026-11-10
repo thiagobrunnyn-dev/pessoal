@@ -1,0 +1,33 @@
+.wa-shell,.wa-shell .panel,.wa-shell form,.wa-shell fieldset,.wa-shell .field{min-width:0;max-width:100%}
+.wa-shell p,.wa-shell h2,.wa-shell h3,.wa-shell small,.wa-shell .confirm{overflow-wrap:anywhere}
+.wa-shell input:not([type=checkbox]),.wa-shell select,.wa-shell textarea{width:100%;min-width:0;max-width:100%}
+.wa-shell .section-heading{align-items:flex-start;gap:12px}
+.wa-shell .section-heading>.button,.wa-shell .section-heading>span{flex-shrink:0}
+.wa-shell .pill{margin-left:0;max-width:none}
+.wa-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.wa-tabs .button{min-height:44px}
+.wa-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;padding:0 6px;margin-left:8px;border-radius:11px;background:rgba(0,0,0,.14);font-size:12px;font-variant-numeric:tabular-nums}
+.wa-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.wa-card{display:grid;gap:4px;margin:0;color:var(--navy)}
+.wa-card strong{font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.wa-card span{color:var(--muted);font-size:14px}
+.wa-item{padding:18px 0;border-top:1px solid var(--line)}
+.wa-item:first-of-type{border-top:0}
+.wa-item h3{margin:0}
+.wa-item .muted{margin:4px 0 0}
+.wa-text{margin:10px 0;white-space:pre-wrap;line-height:1.55}
+.wa-topics{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.wa-shell .form-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.wa-shell .form-actions>.button{min-height:44px;white-space:normal}
+.wa-settings{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:8px}
+.wa-settings legend{padding:0 6px;font-weight:650}
+.wa-details{margin:14px 0}
+.wa-details>summary{cursor:pointer;font-weight:650;min-height:44px;display:flex;align-items:center}
+.wa-messages{list-style:none;margin:12px 0;padding:0;display:grid;gap:10px;max-height:60vh;overflow-y:auto}
+.wa-message{max-width:min(640px,88%);padding:10px 14px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.wa-message.out{justify-self:end;background:#eaf4ec;border-color:#cfe5d6}
+.wa-message .muted{margin:0;font-size:12px}
+.wa-message .wa-text{margin:4px 0 0}
+.wa-send{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+@media(max-width:820px){.wa-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.wa-shell input:not([type=checkbox]),.wa-shell select,.wa-shell textarea{font-size:16px}.wa-message{max-width:100%}.wa-shell .form-actions>.button{flex:1 1 auto}}

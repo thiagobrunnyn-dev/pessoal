@@ -1088,5 +1088,59 @@
     "query": [],
     "fields": [],
     "actions": []
+  },
+  {
+    "path": "whatsapp",
+    "title": "Central do WhatsApp",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "body": "application/json",
+    "description": "Registro de grupos, mensagens, análises, resumos e fila de envio do WhatsApp. O n8n captura no WAHA e grava aqui; o painel nunca chama o WAHA. Só grupos habilitados no painel têm mensagens armazenadas, e o texto é apagado após 90 dias.",
+    "query": [
+      "before",
+      "day",
+      "id",
+      "limit",
+      "status",
+      "view"
+    ],
+    "fields": [
+      "body",
+      "chat_id",
+      "chats",
+      "confirmed",
+      "day",
+      "error",
+      "expected_revision",
+      "id",
+      "items",
+      "limit",
+      "messages",
+      "monitored",
+      "note",
+      "ok",
+      "property_id",
+      "request_id",
+      "sentiment",
+      "status",
+      "summary",
+      "topics",
+      "wa_message_id"
+    ],
+    "actions": [
+      "analysis",
+      "cancel_send",
+      "ingest",
+      "link_property",
+      "monitor",
+      "outbox_claim",
+      "outbox_result",
+      "request_status",
+      "send",
+      "summary",
+      "sync_chats"
+    ]
   }
 ]

@@ -22,7 +22,7 @@ A migração `drizzle/0043_password_access.sql` adiciona o armazenamento de sess
 
 Em **Configurações → Conectar ao n8n**, o Mobiliza apresenta o catálogo da API e o workflow inicial. A API usa `/api/integrations/v1/`, e a área **Credenciais** permite criar chaves com validade e permissão de consulta ou alteração. Para as consultas, use uma chave de somente leitura no gerenciador de credenciais do n8n.
 
-Os quatro modelos e as instruções de importação estão no [guia do n8n](n8n-mobiliza/README.md). Eles cobrem conexão, solicitações e prazos, indicadores semanais e disponibilidade das páginas públicas.
+Os quatro modelos e as instruções de importação estão no [guia do n8n](n8n-mobiliza/README.md). A [Central do WhatsApp](n8n-mobiliza/CENTRAL-WHATSAPP.md) registra no painel os grupos acompanhados pelo WAHA, com análise, resumos e fila de envio. Eles cobrem conexão, solicitações e prazos, indicadores semanais e disponibilidade das páginas públicas.
 
 ## Verificação
 

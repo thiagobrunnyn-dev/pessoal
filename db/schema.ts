@@ -203,3 +203,110 @@ export const passwordSessions = sqliteTable('password_sessions', {
   memberRevision: integer('member_revision'),
   expiresAt: integer('expires_at').notNull(),
 }, table => [index('idx_password_session_expiry').on(table.expiresAt)]);
+
+// Central do WhatsApp: grupos, mensagens capturadas pelo n8n/WAHA, solicitações detectadas,
+// resumos diários e fila de envio. O texto das mensagens é apagado após 90 dias (lib/whatsapp.ts).
+export const whatsappChats = sqliteTable('whatsapp_chats', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  chatJid: text('chat_jid').notNull(),
+  kind: text('kind').notNull().default('group'),
+  name: text('name').notNull(),
+  participantsCount: integer('participants_count'),
+  monitored: integer('monitored').notNull().default(0),
+  monitoredChangedAt: text('monitored_changed_at'),
+  monitoredChangedBy: text('monitored_changed_by'),
+  propertyId: text('property_id').references(() => properties.id),
+  lastMessageAt: text('last_message_at'),
+  revision: integer('revision').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, table => [
+  uniqueIndex('idx_whatsapp_chats_jid').on(table.ownerId, table.chatJid),
+  check('whatsapp_chat_kind', sql`${table.kind} = 'group'`),
+  check('whatsapp_chat_monitored', sql`${table.monitored} IN (0,1)`),
+]);
+
+export const whatsappMessages = sqliteTable('whatsapp_messages', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  chatId: text('chat_id').notNull().references(() => whatsappChats.id),
+  waMessageId: text('wa_message_id').notNull(),
+  direction: text('direction').notNull(),
+  senderJid: text('sender_jid'),
+  senderName: text('sender_name'),
+  kind: text('kind').notNull().default('text'),
+  body: text('body'),
+  hasMedia: integer('has_media').notNull().default(0),
+  sentAt: text('sent_at').notNull(),
+  receivedAt: text('received_at').notNull(),
+  purgedAt: text('purged_at'),
+  analyzedAt: text('analyzed_at'),
+  category: text('category'),
+  isRequest: integer('is_request').notNull().default(0),
+}, table => [
+  uniqueIndex('idx_whatsapp_messages_wa_id').on(table.ownerId, table.waMessageId),
+  index('idx_whatsapp_messages_chat').on(table.ownerId, table.chatId, table.sentAt),
+  index('idx_whatsapp_messages_pending').on(table.ownerId, table.analyzedAt, table.sentAt),
+  check('whatsapp_message_direction', sql`${table.direction} IN ('in','out')`),
+]);
+
+export const whatsappRequests = sqliteTable('whatsapp_requests', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  chatId: text('chat_id').notNull().references(() => whatsappChats.id),
+  messageId: text('message_id').notNull().unique().references(() => whatsappMessages.id),
+  category: text('category').notNull(),
+  urgency: text('urgency').notNull().default('normal'),
+  summary: text('summary').notNull(),
+  requesterName: text('requester_name'),
+  status: text('status').notNull().default('detected'),
+  note: text('note').notNull().default(''),
+  handledByUserId: text('handled_by_user_id'),
+  handledByName: text('handled_by_name'),
+  revision: integer('revision').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, table => [
+  index('idx_whatsapp_requests_status').on(table.ownerId, table.status, table.createdAt),
+  index('idx_whatsapp_requests_chat').on(table.ownerId, table.chatId, table.createdAt),
+  check('whatsapp_request_status', sql`${table.status} IN ('detected','accepted','done','dismissed')`),
+  check('whatsapp_request_urgency', sql`${table.urgency} IN ('low','normal','high')`),
+]);
+
+export const whatsappSummaries = sqliteTable('whatsapp_summaries', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  chatId: text('chat_id').notNull().references(() => whatsappChats.id),
+  day: text('day').notNull(),
+  summary: text('summary').notNull(),
+  topicsJson: text('topics_json').notNull().default('[]'),
+  sentiment: text('sentiment').notNull().default('neutral'),
+  messageCount: integer('message_count').notNull().default(0),
+  participantCount: integer('participant_count').notNull().default(0),
+  requestCount: integer('request_count').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, table => [
+  uniqueIndex('idx_whatsapp_summaries_day').on(table.ownerId, table.chatId, table.day),
+  check('whatsapp_summary_sentiment', sql`${table.sentiment} IN ('positive','neutral','negative','mixed')`),
+]);
+
+export const whatsappOutbox = sqliteTable('whatsapp_outbox', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  chatId: text('chat_id').notNull().references(() => whatsappChats.id),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('queued'),
+  createdByUserId: text('created_by_user_id').notNull(),
+  createdByName: text('created_by_name').notNull(),
+  requestId: text('request_id').notNull().unique(),
+  createdAt: text('created_at').notNull(),
+  claimedAt: text('claimed_at'),
+  sentAt: text('sent_at'),
+  waMessageId: text('wa_message_id'),
+  error: text('error'),
+}, table => [
+  index('idx_whatsapp_outbox_status').on(table.ownerId, table.status, table.createdAt),
+  check('whatsapp_outbox_status', sql`${table.status} IN ('queued','sending','sent','failed','cancelled')`),
+]);
