@@ -10,6 +10,8 @@ Use Node.js 24 e npm. Execute `npm ci` e `npm run dev` para abrir a prévia, ou 
 
 A versão do Sites usa Vinext e os bindings Cloudflare D1 `DB` e R2 `BUCKET`. O manifesto em `.openai/hosting.json` é um modelo. As branches `cloudflare-homologacao` e `producao-vps` mantêm as configurações de implantação daqueles ambientes, com suas próprias sequências de migração.
 
+As páginas só podem ser exibidas em iframe pelo próprio site. Para liberar outro endereço, como a pré-visualização embutida do editor de hospedagem, defina `MOBILIZA_FRAME_ANCESTORS` no ambiente do servidor com as origens confiáveis separadas por espaço (por exemplo `https://editor.example.com`). Só são aceitas origens `https://`, com `*.` opcional no início do domínio; qualquer outro valor é ignorado e o bloqueio padrão continua valendo.
+
 ## Acesso da equipe
 
 Para configurar o login próprio, defina no ambiente do servidor `MOBILIZA_SUPABASE_AUTH=1`, `MOBILIZA_SUPABASE_URL`, `MOBILIZA_SUPABASE_PUBLISHABLE_KEY` e `MOBILIZA_SUPABASE_OWNER_ID` com o UID do primeiro administrador no Supabase. O identificador do proprietário da aplicação em `lib/owner-access.ts` deve corresponder ao ambiente em uso. A variável opcional `MOBILIZA_SUPABASE_MEMBERS` vincula UIDs do Supabase a contas legadas.
