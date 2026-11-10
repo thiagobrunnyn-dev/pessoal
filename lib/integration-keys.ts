@@ -1,5 +1,6 @@
 import {db,noCache} from './maintenance';
-import {getOwnerUser,SITE_OWNER_ID} from './owner-access';
+import {SITE_OWNER_ID} from './owner-access';
+import {getAdministrator,operatorGuard,recheckOperator} from './app-access';
 import {boundedJson,RequestError,requireSameOrigin} from './http-security';
 import type {IntegrationGrant} from './integration-context';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -16,18 +17,18 @@ export async function authenticateIntegration(request:Request):Promise<Integrati
  if(!used)throw new RequestError('Limite de 120 chamadas por minuto atingido ou credencial encerrada. Aguarde e confira a credencial.',429);
  return {id:key.id,ownerId:key.owner_id,name:key.name,permission:key.permission};
 }
-async function owner(){if(!await getOwnerUser())throw new RequestError('Configuração exclusiva do administrador.',401);}
-export async function listIntegrationKeys(){try{await owner();const keys=await db().prepare('SELECT id,name,prefix,permission,created_at,expires_at,revoked_at,last_used_at FROM integration_keys WHERE owner_id=? ORDER BY created_at DESC LIMIT 100').bind(SITE_OWNER_ID).all();return integrationReply({keys:keys.results});}catch(e){return integrationError(e);}}
+async function administrator(){const op=await getAdministrator();if(!op)throw new RequestError('Configuração exclusiva do administrador.',401);return op;}
+export async function listIntegrationKeys(){try{const admin=await administrator();const keys=await db().prepare('SELECT id,name,prefix,permission,created_at,expires_at,revoked_at,last_used_at FROM integration_keys WHERE owner_id=? ORDER BY created_at DESC LIMIT 100').bind(admin.ownerId).all();await recheckOperator(admin);return integrationReply({keys:keys.results});}catch(e){return integrationError(e);}}
 export async function createIntegrationKey(request:Request){try{
- await owner();requireSameOrigin(request);const body=await boundedJson(request,2048);
+ const admin=await administrator();const auth=operatorGuard(admin);requireSameOrigin(request);const body=await boundedJson(request,2048);
  if(!body||Array.isArray(body)||Object.keys(body).some(k=>!['id','name','permission','days','confirmed'].includes(k))||!UUID.test(body.id)||typeof body.name!=='string'||!body.name.trim()||body.name.trim().length>80||!['read','write'].includes(body.permission)||![7,30,90,365].includes(body.days)||body.confirmed!==true)throw new RequestError('Confira nome, validade e permissões da credencial.');
- const prior=await db().prepare('SELECT id FROM integration_keys WHERE id=? AND owner_id=?').bind(body.id,SITE_OWNER_ID).first();if(prior)throw new RequestError('Esta credencial já foi criada. O segredo não pode ser exibido novamente; revogue-a e crie outra se não o copiou.',409);
+ const prior=await db().prepare('SELECT id FROM integration_keys WHERE id=? AND owner_id=?').bind(body.id,admin.ownerId).first();if(prior)throw new RequestError('Esta credencial já foi criada. O segredo não pode ser exibido novamente; revogue-a e crie outra se não o copiou.',409);
  const token='mbl_'+[...crypto.getRandomValues(new Uint8Array(32))].map(n=>n.toString(16).padStart(2,'0')).join('');const now=new Date().toISOString(),expires=new Date(Date.now()+body.days*86400000).toISOString();
- const result=await db().prepare('INSERT OR IGNORE INTO integration_keys(id,owner_id,name,token_hash,prefix,permission,created_at,expires_at,rate_window,rate_count) SELECT ?,?,?,?,?,?,?,?,0,0 WHERE (SELECT COUNT(*) FROM integration_keys WHERE owner_id=? AND revoked_at IS NULL AND expires_at>?)<20').bind(body.id,SITE_OWNER_ID,body.name.trim(),await tokenHash(token),token.slice(0,12),body.permission,now,expires,SITE_OWNER_ID,now).run();
- if(!result.meta.changes)throw new RequestError('Credencial já criada ou limite de 20 credenciais ativas atingido. Atualize a lista.',409);
+ const result=await db().prepare('INSERT OR IGNORE INTO integration_keys(id,owner_id,name,token_hash,prefix,permission,created_at,expires_at,rate_window,rate_count) SELECT ?,?,?,?,?,?,?,?,0,0 WHERE (SELECT COUNT(*) FROM integration_keys WHERE owner_id=? AND revoked_at IS NULL AND expires_at>?)<20 AND '+auth.sql).bind(body.id,admin.ownerId,body.name.trim(),await tokenHash(token),token.slice(0,12),body.permission,now,expires,admin.ownerId,now,...auth.args).run();
+ if(!result.meta.changes){await recheckOperator(admin);throw new RequestError('Credencial já criada ou limite de 20 credenciais ativas atingido. Atualize a lista.',409);}
  return integrationReply({id:body.id,token,expires_at:expires},201);
 }catch(e){return integrationError(e);}}
 export async function revokeIntegrationKey(request:Request){try{
- await owner();requireSameOrigin(request);const body=await boundedJson(request,256);if(!body||Object.keys(body).some(k=>!['id','confirmed'].includes(k))||!UUID.test(body.id)||body.confirmed!==true)throw new RequestError('Confirme a credencial que deseja revogar.');
- const result=await db().prepare('UPDATE integration_keys SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND owner_id=? RETURNING id').bind(new Date().toISOString(),body.id,SITE_OWNER_ID).first();if(!result)throw new RequestError('Credencial não encontrada.',404);return integrationReply({id:body.id,revoked:true});
+ const admin=await administrator();const auth=operatorGuard(admin);requireSameOrigin(request);const body=await boundedJson(request,256);if(!body||Object.keys(body).some(k=>!['id','confirmed'].includes(k))||!UUID.test(body.id)||body.confirmed!==true)throw new RequestError('Confirme a credencial que deseja revogar.');
+ const result=await db().prepare('UPDATE integration_keys SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND owner_id=? AND '+auth.sql+' RETURNING id').bind(new Date().toISOString(),body.id,admin.ownerId,...auth.args).first();if(!result){await recheckOperator(admin);throw new RequestError('Credencial não encontrada.',404);}return integrationReply({id:body.id,revoked:true});
 }catch(e){return integrationError(e);}}

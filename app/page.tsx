@@ -1,5 +1,5 @@
 import {isRegionalRequest} from '../lib/regional-access';
-import {requireOperator} from '../lib/app-access';
+import {canAdminister,requireOperator} from '../lib/app-access';
 import {filtersFromSearchRecord} from '../lib/operation-filter-values';
 import {hubData} from '../lib/hub-data';
 import {getChatGPTUser} from './chatgpt-auth';
@@ -15,5 +15,5 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
 
   const op=await requireOperator(returnTo);
   const summary=await hubData(op.ownerId,new URLSearchParams(initialQuery)).catch(()=>null);
-  return <Hub regional={isRegionalRequest()} initialQuery={initialQuery} initialSummary={summary} displayName={op.actor.fullName||op.actor.displayName} accessTitle={op.title} canManageAccess={op.role==='owner'} teamSession={op.actor.teamSession}/>;
+  return <Hub regional={isRegionalRequest()} initialQuery={initialQuery} initialSummary={summary} displayName={op.actor.fullName||op.actor.displayName} accessTitle={op.title} canManageAccess={canAdminister(op)} teamSession={op.actor.teamSession}/>;
 }

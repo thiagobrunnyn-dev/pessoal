@@ -23,7 +23,7 @@ export interface ConfigStore {
 }
 export type MapsOperator = {actor: {userId: string}; ownerId: string};
 export interface MapsDependencies {
-  getOwnerId(): Promise<string | null>;
+  getAdministrator(): Promise<MapsOperator | null>;
   getOperator(): Promise<MapsOperator | null>;
   recheckOperator(op: MapsOperator): Promise<void>;
   propertyAllowed(op: MapsOperator, propertyId: string): Promise<boolean>;
@@ -77,14 +77,17 @@ export function createMapsApi(deps: MapsDependencies) {
   return {
     async settingsGet() {
       try {
-        if (!await deps.getOwnerId()) throw new MapsError('Configuração exclusiva do proprietário.', 403);
-        return reply(statusOf((await deps.store.read()).config));
+        const admin = await deps.getAdministrator();
+        if (!admin) throw new MapsError('Configuração exclusiva de administradores.', 403);
+        const {config} = await deps.store.read();
+        await deps.recheckOperator(admin);
+        return reply(statusOf(config));
       } catch (error) { return failure(error); }
     },
     async settingsPost(request: Request) {
       try {
-        const ownerId = await deps.getOwnerId();
-        if (!ownerId) throw new MapsError('Configuração exclusiva do proprietário.', 403);
+        const admin = await deps.getAdministrator();
+        if (!admin) throw new MapsError('Configuração exclusiva de administradores.', 403);
         checkWriteOrigin(request);
         const b = record(await deps.readJson(request, 8192));
         const previous = await deps.store.read();
@@ -108,11 +111,12 @@ export function createMapsApi(deps: MapsDependencies) {
             throw new MapsError('Descreva as quotas e os limites definidos por você no Google, até 2.000 caracteres.');
           }
           next = {...previous.config, enabled: true, revision, declared_limits: b.declared_limits.trim(),
-            consent: {at: deps.now?.() ?? new Date().toISOString(), actor: ownerId, version: 1}};
+            consent: {at: deps.now?.() ?? new Date().toISOString(), actor: admin.actor.userId, version: 1}};
         } else if (b.action === 'disable') {
           if (!previous.config) throw new MapsError('Nenhuma chave configurada.');
           next = {...previous.config, enabled: false, revision};
         } else throw new MapsError('Ação inválida.');
+        await deps.recheckOperator(admin);
         if (!await deps.store.write(next, previous.etag)) throw new MapsError('Outra alteração ocorreu. Atualize a página.', 409);
         return reply(statusOf(next));
       } catch (error) { return failure(error); }

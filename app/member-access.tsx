@@ -93,7 +93,7 @@ export default function MemberAccess({owner=false,teamSession=false,passwordAuth
      <button type="button" className="button secondary" disabled={disabled} onClick={()=>{setInvite(null);setInviteError(null);void load();}}><RefreshCw size={16}/>Atualizar</button>
     </div>
     {!data?<p>Carregando…</p>:owner?<>
-     <p className="muted">Administrador é o sócio-administrador. Os integrantes abaixo gerenciam as áreas operacionais conforme o escopo indicado. Publicação, membros e códigos permanecem com Administrador. Gestores podem ativar e desativar o QR de consulta da Limpeza. A lavanderia tem acesso separado.</p>
+     <p className="muted">Administradores têm acesso a todas as áreas e podem cadastrar novos administradores. Os demais perfis atuam conforme o escopo indicado. Gestores podem ativar e desativar o QR de consulta da Limpeza. A lavanderia tem acesso separado.</p>
      {passwordAuth ? <>
       <CreatePasswordMember onCreated={()=>void load()}/>
       <section className="clean-inset" aria-labelledby="password-members-title">
@@ -142,7 +142,7 @@ export default function MemberAccess({owner=false,teamSession=false,passwordAuth
      })}
     </>:<>
      <p className="muted">Conta conectada: <strong>{data.email}</strong></p>
-     {data.status==='active'?<><p className="visit-success">Acesso operacional liberado.</p><a className="button" href="/">Abrir MOBILIZA GESTÃO</a></>:data.status==='pending'?<p className="clean-inset">Solicitação registrada. Peça a Administrador para confirmar sua conta na área Equipe.</p>:data.status==='revoked'?<p className="clean-inset">Este acesso foi encerrado. Consulte Administrador.</p>:data.eligible?<><p className="clean-inset">Seu cadastro como {data.title} foi preparado. Confirme esta conta para que Administrador possa liberar a gestão operacional. Nenhum dado dos controles será exibido antes da aprovação.</p><button type="button" className="button" disabled={busy} onClick={()=>void act('request')}>Solicitar vínculo desta conta</button></>:<p className="clean-inset">Esta conta não tem acesso operacional liberado. Consulte o sócio-administrador.</p>}
+     {data.status==='active'?<><p className="visit-success">Acesso operacional liberado.</p><a className="button" href="/">Abrir MOBILIZA GESTÃO</a></>:data.status==='pending'?<p className="clean-inset">Solicitação registrada. Peça a Administrador para confirmar sua conta na área Equipe.</p>:data.status==='revoked'?<p className="clean-inset">Este acesso foi encerrado. Consulte Administrador.</p>:data.eligible?<><p className="clean-inset">Seu cadastro como {data.title} foi preparado. Confirme esta conta para que Administrador possa liberar a gestão operacional. Nenhum dado dos controles será exibido antes da aprovação.</p><button type="button" className="button" disabled={busy} onClick={()=>void act('request')}>Solicitar vínculo desta conta</button></>:<p className="clean-inset">Esta conta não tem acesso operacional liberado. Consulte um administrador.</p>}
      <details className="clean-inset"><summary>Minha referência de conta</summary><p style={{overflowWrap:'anywhere'}}>{data.reference}</p></details>
      {teamSession?<TeamSignOut label="Sair e trocar conta"/>:<a className="text-button" href="/signout-with-chatgpt?return_to=/acesso" target="_top">Sair e trocar conta</a>}
     </>}

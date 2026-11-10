@@ -1,5 +1,5 @@
 import {createHash, randomBytes, randomUUID} from 'node:crypto';
-import {memberTitle} from './app-access';
+import {canAdminister,memberTitle,operatorGuard,recheckOperator,type Operator} from './app-access';
 import {RequestError} from './http-security';
 import {isSupabaseMemberId, type MemberRole} from './member-roles';
 import {SITE_OWNER_ID} from './owner-access';
@@ -179,7 +179,9 @@ export async function signInWithPassword(request: Request, env: Cloudflare.Env, 
   return COOKIE + '=' + token + '; ' + ATTRIBUTES + '; Max-Age=' + Math.max(0, identity.expiresAt - now());
 }
 
-export async function resolvePasswordSession(request: Request, env: Cloudflare.Env) {
+export async function resolvePasswordSession(request: Request, env: Cloudflare.Env): Promise<{
+  userId: string; email: string; fullName: string | null; revision: number | null;
+} | null> {
   const hash = sessionHash(request);
   if (!hash || !env.DB) return null;
   let config: Configuration;
@@ -189,7 +191,7 @@ export async function resolvePasswordSession(request: Request, env: Cloudflare.E
     .bind(hash, config.origin)
     .first<{providerUserId: string; userId: string; email: string; revision: number | null}>();
   if (!row || linkedUserId(config, row.providerUserId) !== row.userId) return null;
-  if (row.userId === SITE_OWNER_ID) return {userId: row.userId, email: row.email, fullName: null};
+  if (row.userId === SITE_OWNER_ID) return {userId: row.userId, email: row.email, fullName: null, revision: null};
   const member = await activeMember(env.DB, row.userId, row.email);
   return member?.revision === row.revision && member.passwordChangeRequired === 0 ? member : null;
 }
@@ -203,7 +205,8 @@ export function clearPasswordSessionCookie() {
   return COOKIE + '=; ' + ATTRIBUTES + '; Max-Age=0';
 }
 
-export async function createPasswordMember(env: Cloudflare.Env, input: {name: string; email: string; role: MemberRole}) {
+export async function createPasswordMember(env: Cloudflare.Env, input: {name: string; email: string; role: MemberRole}, admin: Operator) {
+  if (!canAdminister(admin)) throw new RequestError('Apenas o administrador pode cadastrar usuários.', 403);
   const config = configuration(env);
   const secret = env.MOBILIZA_SUPABASE_SECRET_KEY?.trim();
   const db = env.DB;
@@ -214,12 +217,22 @@ export async function createPasswordMember(env: Cloudflare.Env, input: {name: st
   const userId = 'supabase:' + providerId;
   const temporaryPassword = randomBytes(24).toString('base64url') + 'aA7!';
   const createdAt = new Date().toISOString();
+  const auth = operatorGuard(admin);
   const reservation = await db.prepare(`INSERT INTO app_members
     (user_id, email, display_name, role, status, revision, requested_at, password_change_required)
     SELECT ?, ?, ?, ?, 'provisioning', 0, ?, 1
-    WHERE NOT EXISTS (SELECT 1 FROM app_members WHERE lower(email)=?)`)
-    .bind(userId, input.email, input.name, input.role, createdAt, input.email).run();
-  if (reservation.meta.changes !== 1) throw new RequestError('Já existe um cadastro ou uma criação pendente para este e-mail.', 409);
+    WHERE NOT EXISTS (SELECT 1 FROM app_members WHERE lower(email)=?) AND ${auth.sql}`)
+    .bind(userId, input.email, input.name, input.role, createdAt, input.email, ...auth.args).run();
+  if (reservation.meta.changes !== 1) {
+    await recheckOperator(admin);
+    throw new RequestError('Já existe um cadastro ou uma criação pendente para este e-mail.', 409);
+  }
+  try {
+    await recheckOperator(admin);
+  } catch (error) {
+    await db.prepare("DELETE FROM app_members WHERE user_id=? AND status='provisioning'").bind(userId).run();
+    throw error;
+  }
 
   const pending = () => new RequestError('O cadastro está pendente. Confira a conta no Supabase antes de repetir.', 503);
   let response: Response;
@@ -239,8 +252,8 @@ export async function createPasswordMember(env: Cloudflare.Env, input: {name: st
   const created = await response.json<{id?: unknown; email?: unknown}>();
   if (created.id !== providerId || created.email !== input.email) throw pending();
   const active = await db.prepare(`UPDATE app_members SET status='active', revision=1, approved_at=?, approved_by=?
-    WHERE user_id=? AND status='provisioning' AND email=?`)
-    .bind(createdAt, SITE_OWNER_ID, userId, input.email).run();
+    WHERE user_id=? AND status='provisioning' AND email=? AND ${auth.sql}`)
+    .bind(createdAt, admin.actor.userId, userId, input.email, ...auth.args).run();
   if (active.meta.changes !== 1) throw pending();
   return {email: input.email, temporary_password: temporaryPassword};
 }

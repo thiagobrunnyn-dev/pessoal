@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Use the CommonJS transpile harness shared by the backend suites. */
 const assert = require('node:assert/strict');
-const { createHash } = require('node:crypto');
+const { createHash, randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
@@ -17,6 +17,7 @@ class Statement {
   constructor(sql, args = []) { this.sql = sql; this.args = args; }
   bind(...args) { return new Statement(this.sql, args); }
   async first() { return sqlite.prepare(this.sql).get(...this.args) ?? null; }
+  async all() { return { results: sqlite.prepare(this.sql).all(...this.args) }; }
   async run() { return { meta: sqlite.prepare(this.sql).run(...this.args) }; }
 }
 
@@ -57,11 +58,6 @@ function load(file) {
     if (id === 'next/navigation') return {};
     if (id.startsWith('.')) {
       const target = path.posix.join(path.posix.dirname(file), `${id}.ts`);
-      if (target === 'lib/regional-access.ts') return {};
-      if (target === 'lib/app-access.ts') {
-        const { MEMBER_ROLES } = load('lib/member-roles.ts');
-        return { memberTitle: ({ role }) => MEMBER_ROLES[role] ?? null };
-      }
       return load(target);
     }
     return require(id);
@@ -71,7 +67,18 @@ function load(file) {
 }
 
 const { SITE_OWNER_ID } = load('lib/owner-access.ts');
+const { PASSWORD_SESSION_REVISION_HEADER } = load('lib/trusted-identity.ts');
 const { resolvePasswordSession } = load('lib/supabase-auth.ts');
+const { canAdminister, getOperator, getAdministrator, operatorGuard, recheckOperator } = load('lib/app-access.ts');
+const { withIntegration } = load('lib/integration-context.ts');
+const { runWithRegionalAccess, isRegionalRequest } = load('lib/regional-access.ts');
+const members = load('app/api/members/route.ts');
+const integrationSettings = load('app/api/settings/integrations/route.ts');
+const visitAccess = load('app/api/visit-access/route.ts');
+const cleaningAccess = load('app/api/cleaning/access/route.ts');
+const publicHistory = load('app/api/equipment-public-access/route.ts');
+const guestChannel = load('app/api/guest-channel-settings/route.ts');
+const { propertyImportGlobalGuard } = load('lib/property-import-runtime.ts');
 const { POST: create } = load('app/api/password-members/route.ts');
 const { POST: signIn } = load('app/api/password-session/route.ts');
 const { POST: signOut } = load('app/api/team-session/logout/route.ts');
@@ -140,6 +147,12 @@ function post(route, body, cookie = '') {
 }
 
 const createRequest = input => post('/api/password-members', input);
+function setIdentity(userId, email, revision) {
+  nextHeaders.set('oai-authenticated-user-id', userId);
+  nextHeaders.set('oai-authenticated-user-email', email);
+  nextHeaders.delete(PASSWORD_SESSION_REVISION_HEADER);
+  if (revision != null) nextHeaders.set(PASSWORD_SESSION_REVISION_HEADER, String(revision));
+}
 const loginRequest = (email, password, fields) => post('/api/password-session', { email, password, ...fields });
 const privateRequest = cookie => new Request(app + '/dashboard', { headers: { Cookie: cookie } });
 const member = email => sqlite.prepare('SELECT * FROM app_members WHERE email=?').get(email);
@@ -155,8 +168,7 @@ async function check() {
   try {
     assert.equal((await create(createRequest(staff))).status, 403);
     assert.equal(adminCalls, 0);
-    nextHeaders.set('oai-authenticated-user-id', SITE_OWNER_ID);
-    nextHeaders.set('oai-authenticated-user-email', 'owner@example.test');
+    setIdentity(SITE_OWNER_ID, 'owner@example.test');
     const created = await create(createRequest(staff));
     assert.equal(created.status, 201);
     assert.match(created.headers.get('Cache-Control'), /no-store/);
@@ -219,10 +231,135 @@ async function check() {
     assert.equal(signedIn.status, 200);
     assert.deepEqual(await signedIn.json(), { ok: true, return_to: '/' });
     const secondCookie = signedIn.headers.get('Set-Cookie').split(';')[0];
-    assert.ok(await resolvePasswordSession(privateRequest(secondCookie), env));
+    const ordinarySession = await resolvePasswordSession(privateRequest(secondCookie), env);
+    assert.ok(ordinarySession);
+    setIdentity(ordinarySession.userId, email, ordinarySession.revision);
+    assert.equal((await getOperator()).role, 'operator');
+    assert.equal(await getAdministrator(), null);
+    assert.equal((await create(createRequest({...staff, email: 'ordinary-cannot-create@example.test', role: 'admin'}))).status, 403);
     sqlite.prepare("UPDATE app_members SET status='revoked', revision=revision+1 WHERE email=?").run(email);
     assert.equal(await resolvePasswordSession(privateRequest(secondCookie), env), null);
     assert.equal((await signIn(loginRequest(email, chosenPassword))).status, 401);
+
+    setIdentity(SITE_OWNER_ID, 'owner@example.test');
+    sqlite.prepare("UPDATE app_members SET role='admin' WHERE user_id=?").run(ordinarySession.userId);
+    const reapproved = await members.POST(post('/api/members', {action: 'approve', user_id: ordinarySession.userId, confirmed: true}));
+    assert.equal(reapproved.status, 200);
+
+    // The Worker accepted this cookie before the revoke/reapproval. The later role
+    // lookup must still enforce the revision from that accepted session.
+    setIdentity(ordinarySession.userId, email, ordinarySession.revision);
+    assert.equal(await getOperator(), null);
+    assert.equal(await getAdministrator(), null);
+    assert.equal((await create(createRequest({...staff, email: 'stale-cannot-create@example.test', role: 'admin'}))).status, 403);
+    assert.equal(await resolvePasswordSession(privateRequest(secondCookie), env), null);
+    setIdentity(ordinarySession.userId, email);
+    assert.equal(await getOperator(), null);
+    setIdentity(ordinarySession.userId, email, '0, ' + member(email).revision);
+    assert.equal(await getOperator(), null);
+    setIdentity(SITE_OWNER_ID, 'owner@example.test');
+
+    const adminEmail = 'administrator@example.test';
+    const adminCreated = await create(createRequest({...staff, email: adminEmail, role: 'admin'}));
+    assert.equal(adminCreated.status, 201);
+    const firstAdmin = await adminCreated.json();
+    const adminLogin = await signIn(loginRequest(adminEmail, firstAdmin.temporary_password, {new_password: 'Synthetic-Admin-password-42!'}));
+    assert.equal(adminLogin.status, 200);
+    const adminCookie = adminLogin.headers.get('Set-Cookie').split(';')[0];
+    const adminSession = await resolvePasswordSession(privateRequest(adminCookie), env);
+    assert.ok(adminSession);
+    const adminId = adminSession.userId;
+    assert.notEqual(adminId, SITE_OWNER_ID);
+    setIdentity(adminId, adminSession.email, adminSession.revision);
+    const admin = await getAdministrator();
+    assert.equal(admin.role, 'admin');
+    assert.equal(admin.ownerId, SITE_OWNER_ID);
+    assert.equal(admin.actor.userId, adminId);
+    assert.equal(canAdminister(admin), true);
+    assert.equal((await members.GET(new Request(app + '/api/members'))).status, 200);
+    assert.equal((await integrationSettings.GET()).status, 200);
+    const integrationKeyId = randomUUID();
+    const key = await integrationSettings.POST(post('/api/settings/integrations', {id: integrationKeyId, name: 'Admin key', permission: 'read', days: 7, confirmed: true}));
+    assert.equal(key.status, 201);
+    assert.equal(sqlite.prepare('SELECT owner_id FROM integration_keys WHERE id=?').get(integrationKeyId).owner_id, SITE_OWNER_ID);
+    assert.equal((await integrationSettings.DELETE(post('/api/settings/integrations', {id: integrationKeyId, confirmed: true}))).status, 200);
+
+    const propertyId = randomUUID(), equipmentId = randomUUID(), locationId = randomUUID(), stamp = new Date().toISOString();
+    sqlite.prepare('INSERT INTO properties (id,owner_id,name,address,state_code,created_at) VALUES (?,?,?,?,?,?)')
+      .run(propertyId, SITE_OWNER_ID, 'Admin property', 'Private address', 'MG', stamp);
+    sqlite.prepare('INSERT INTO equipment (id,owner_id,property_id,name,location,checklist,created_at) VALUES (?,?,?,?,?,?,?)')
+      .run(equipmentId, SITE_OWNER_ID, propertyId, 'Admin equipment', 'Room', '[]', stamp);
+    sqlite.prepare('INSERT INTO cleaning_locations (id,owner_id,property_id,name,catalog,created_at) VALUES (?,?,?,?,?,?)')
+      .run(locationId, SITE_OWNER_ID, propertyId, 'Admin location', '[]', stamp);
+
+    assert.equal((await visitAccess.POST(post('/api/visit-access', {action: 'generate', equipment_id: equipmentId, technician_name: 'Test technician'}))).status, 200);
+    assert.equal(sqlite.prepare('SELECT owner_id FROM visit_grants WHERE equipment_id=?').get(equipmentId).owner_id, SITE_OWNER_ID);
+    assert.equal((await visitAccess.POST(post('/api/visit-access', {action: 'revoke', equipment_id: equipmentId}))).status, 200);
+    assert.equal((await cleaningAccess.POST(post('/api/cleaning/access', {action: 'generate', role: 'team', location_id: locationId, person_name: 'Test staff'}))).status, 200);
+    assert.equal(sqlite.prepare('SELECT owner_id FROM cleaning_grants WHERE location_id=?').get(locationId).owner_id, SITE_OWNER_ID);
+    assert.equal((await cleaningAccess.POST(post('/api/cleaning/access', {action: 'revoke', role: 'team', location_id: locationId}))).status, 200);
+
+    const visibility = await publicHistory.POST(post('/api/equipment-public-access', {id: equipmentId, enabled: false, revision: 0, confirmed: true}));
+    assert.equal(visibility.status, 200);
+    const event = sqlite.prepare('SELECT owner_id,actor_user_id FROM equipment_public_events WHERE equipment_id=?').get(equipmentId);
+    assert.equal(event.owner_id, SITE_OWNER_ID);
+    assert.equal(event.actor_user_id, adminId);
+    const channel = await guestChannel.POST(post('/api/guest-channel-settings', {property_id: propertyId, action: 'enable', revision: 0, request_id: randomUUID(), confirmed: true, audience_confirmed: true}));
+    assert.equal(channel.status, 200);
+    assert.ok((await channel.json()).path.startsWith('/canal/'));
+    const importGuard = propertyImportGlobalGuard(admin);
+    assert.ok(sqlite.prepare('SELECT 1 AS allowed WHERE ' + importGuard.sql).get(...importGuard.args));
+    const invalidBootstrapRevoke = await members.POST(post('/api/members', {action: 'revoke', user_id: SITE_OWNER_ID}));
+    assert.equal(invalidBootstrapRevoke.status, 400);
+
+    const secondAdminEmail = 'second-administrator@example.test';
+    const secondAdminCreated = await create(createRequest({...staff, email: secondAdminEmail, role: 'admin'}));
+    assert.equal(secondAdminCreated.status, 201);
+    const secondAdminId = member(secondAdminEmail).user_id;
+    assert.equal(member(secondAdminEmail).approved_by, adminId);
+    assert.equal(member(secondAdminEmail).role, 'admin');
+    const secondAdmin = await secondAdminCreated.json();
+    const secondAdminLogin = await signIn(loginRequest(secondAdminEmail, secondAdmin.temporary_password, {new_password: 'Second-Synthetic-Admin-password-42!'}));
+    assert.equal(secondAdminLogin.status, 200);
+    const secondAdminCookie = secondAdminLogin.headers.get('Set-Cookie').split(';')[0];
+    const secondAdminSession = await resolvePasswordSession(privateRequest(secondAdminCookie), env);
+    assert.equal(secondAdminSession.userId, secondAdminId);
+    setIdentity(secondAdminId, secondAdminEmail, secondAdminSession.revision);
+    assert.equal((await getAdministrator()).actor.userId, secondAdminId);
+    const integration = {id: 'test-integration', ownerId: SITE_OWNER_ID, permission: 'write', name: 'test'};
+    assert.equal(await withIntegration(integration, getAdministrator), null);
+    assert.equal((await withIntegration(integration, () => create(createRequest({...staff, email: 'bearer-cannot-create@example.test', role: 'admin'})))).status, 403);
+
+    const regionalUser = 'supabase:00000000-0000-4000-8000-000000000008';
+    const regionalEmail = 'manutencao@example.invalid';
+    sqlite.prepare("INSERT INTO app_members (user_id,email,display_name,role,status,requested_at) VALUES (?,?,?,'maintenance_lead','active',?)")
+      .run(regionalUser, regionalEmail, 'Regional', new Date().toISOString());
+    setIdentity(regionalUser, regionalEmail, 0);
+    const regionalRequest = new Request(app + '/', {headers: nextHeaders});
+    await runWithRegionalAccess(regionalRequest, env.DB, async () => {
+      assert.equal(isRegionalRequest(), true);
+      assert.equal((await getOperator()).role, 'operator');
+      assert.equal(await getAdministrator(), null);
+    });
+    sqlite.prepare("UPDATE app_members SET role='admin', revision=revision+1 WHERE user_id=?").run(regionalUser);
+    await runWithRegionalAccess(regionalRequest, env.DB, async () => {
+      assert.equal(isRegionalRequest(), false);
+      assert.equal(await getAdministrator(), null);
+      setIdentity(regionalUser, regionalEmail, 1);
+      assert.equal((await getAdministrator()).role, 'admin');
+    });
+
+    // An already authenticated admin cannot finish an admin write after losing the role.
+    sqlite.prepare("UPDATE app_members SET role='general_manager' WHERE user_id=?").run(adminId);
+    const guard = operatorGuard(admin);
+    assert.equal(sqlite.prepare('SELECT 1 AS permitted WHERE ' + guard.sql).get(...guard.args), undefined);
+    await assert.rejects(() => recheckOperator(admin), {status: 401});
+    setIdentity(secondAdminId, secondAdminEmail, secondAdminSession.revision);
+    const revoked = await members.POST(post('/api/members', {action: 'revoke', user_id: adminId}));
+    assert.equal(revoked.status, 200);
+    assert.equal(await resolvePasswordSession(privateRequest(adminCookie), env), null);
+    setIdentity(adminId, adminEmail, adminSession.revision);
+    assert.equal(await getAdministrator(), null);
   } finally {
     globalThis.fetch = originalFetch;
     sqlite.close();

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { PASSWORD_SESSION_REVISION_HEADER, TEAM_SESSION_HEADER } from "../lib/trusted-identity";
 
 export type ChatGPTUser = {
   userId: string;
@@ -7,6 +8,7 @@ export type ChatGPTUser = {
   email: string;
   fullName: string | null;
   teamSession?: boolean;
+  passwordSessionRevision?: number;
 };
 
 const USER_ID_HEADER = "oai-authenticated-user-id";
@@ -34,12 +36,15 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       ? safeDecodeURIComponent(encodedFullName)
       : null;
 
+  const revisionHeader = requestHeaders.get(PASSWORD_SESSION_REVISION_HEADER);
+  const revision = revisionHeader !== null && /^\d+$/.test(revisionHeader) ? Number(revisionHeader) : NaN;
   return {
     userId,
     displayName: fullName ?? email,
     email,
     fullName,
-    teamSession: requestHeaders.get("x-mobiliza-team-session") === "1",
+    teamSession: requestHeaders.get(TEAM_SESSION_HEADER) === "1",
+    passwordSessionRevision: Number.isSafeInteger(revision) ? revision : undefined,
   };
 }
 

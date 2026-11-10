@@ -1,6 +1,6 @@
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {RequestError} from './http-security';
-import {isSupabaseMemberId} from './member-roles';
+import {isRegionalMember,isSupabaseMemberId} from './member-roles';
 // This restriction supplements the app's existing owner, operator and bearer authorization.
 // The platform supplies these identity headers; no email or region is accepted from forms.
 export const REGIONAL_EMAIL='manutencao@example.invalid';
@@ -17,8 +17,9 @@ export async function runWithRegionalAccess<T>(request:Request,db:D1Database,run
  let member:any=null;
  // Email only selects the restrictive path. Operational access still requires the bound approved ID.
  if(uid&&uid!=='CONFIGURE_VERIFIED_SITE_OWNER_ID')member=await db.prepare("SELECT user_id,email,status,role,revision FROM app_members WHERE user_id=? AND (email=? OR role='maintenance_lead')").bind(uid,REGIONAL_EMAIL).first();
- const regional=email===REGIONAL_EMAIL||member?.email===REGIONAL_EMAIL||
-  (member?.role==='maintenance_lead'&&isSupabaseMemberId(member.user_id));
+ const activeGlobalAdmin=member?.role==='admin'&&member.status==='active'&&isSupabaseMemberId(member.user_id);
+ const regional=!activeGlobalAdmin&&(email===REGIONAL_EMAIL||member?.email===REGIONAL_EMAIL||
+  (member?.role==='maintenance_lead'&&isSupabaseMemberId(member.user_id)));
  if(!regional)return await context.run({regional:false,permitted:false,epoch:-1,memberId:null,revision:-1},run);
  const permitted=!!(member&&member.role==='maintenance_lead'&&member.status==='active'&&
   (member.email===REGIONAL_EMAIL||isSupabaseMemberId(member.user_id)));
@@ -32,7 +33,7 @@ export async function runWithRegionalAccess<T>(request:Request,db:D1Database,run
  });
 }
 export function ensureRegionalContext(email:string,userId?:string,role?:string){
- if((email===REGIONAL_EMAIL||(userId&&role==='maintenance_lead'&&isSupabaseMemberId(userId)))&&!isRegionalRequest())
+ if(((role!=='admin'&&email===REGIONAL_EMAIL)||isRegionalMember(userId??'',email,role??'',REGIONAL_EMAIL))&&!isRegionalRequest())
   throw new RequestError('Não foi possível validar o escopo do acesso. Atualize a página.',403);
 }
 export function scopedSelect(sql:string):string{

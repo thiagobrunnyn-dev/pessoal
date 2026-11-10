@@ -106,7 +106,7 @@ export default function GoogleMapsSettings() {
     <main className="tech-shell maps-settings">
       <a href="/configuracoes" className="nav-back"><ArrowLeft size={19}/>Voltar às configurações</a>
       <section className="panel">
-        <div className="eyebrow">EXCLUSIVO DO PROPRIETÁRIO</div>
+        <div className="eyebrow">EXCLUSIVO DE ADMINISTRADORES</div>
         <h1><MapPin size={26}/> Google Maps</h1>
         <p className="muted">O OpenStreetMap e as coordenadas cadastradas continuam disponíveis. Salvar a chave não carrega nem ativa o Google.</p>
         <p role="status">{status ? status.enabled ? 'Google ativado para carregamento voluntário.' : status.configured ? 'Chave configurada. Google desativado.' : 'Nenhuma chave configurada. Google desativado.' : 'Consultando configuração…'}</p>

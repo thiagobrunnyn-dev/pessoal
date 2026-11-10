@@ -1,4 +1,5 @@
 export const MEMBER_ROLES = {
+  admin: 'Administrador (ADM)',
   general_manager: 'Gerente geral',
   maintenance_lead: 'Encarregado de manutenção',
   administrative_analyst: 'Analista administrativo',
@@ -20,4 +21,5 @@ export function isRegionalMember(userId: string, email: string, role: string, le
   return role === 'maintenance_lead' && (email === legacyRegionalEmail || isSupabaseMemberId(userId));
 }
 
-export const SUPABASE_MEMBER_SQL = "user_id LIKE 'supabase:%' AND role IN ('general_manager','maintenance_lead','administrative_analyst')";
+export const SUPABASE_MEMBER_SQL = "user_id LIKE 'supabase:%' AND role IN (" +
+  Object.keys(MEMBER_ROLES).map(role => "'" + role + "'").join(',') + ')';

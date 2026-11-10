@@ -2,7 +2,7 @@ import {runWithRegionalAccess} from "../lib/regional-access";
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
-import { trustedIdentityRequest } from "../lib/trusted-identity";
+import { PASSWORD_SESSION_REVISION_HEADER, TEAM_SESSION_HEADER, trustedIdentityRequest } from "../lib/trusted-identity";
 import { resolveTeamSession } from "../lib/team-access";
 import { resolveCloudflareOwner } from "../lib/cloudflare-owner-auth";
 import { resolvePasswordSession } from "../lib/supabase-auth";
@@ -34,25 +34,22 @@ export default {
     const sitesIdentity = !standalone && !passwordMode;
     const localMock = sitesIdentity && import.meta.env.DEV && import.meta.env.MOBILIZA_LOCAL_MOCK_AUTH === '1';
     request = trustedIdentityRequest(request, sitesIdentity ? env : {}, localMock);
-    const team = passwordMode
-      ? await resolvePasswordSession(request, env).catch(() => null)
-      : await resolveTeamSession(request, env.DB);
+    const passwordSession = passwordMode ? await resolvePasswordSession(request, env).catch(() => null) : null;
+    const team = passwordMode ? passwordSession : await resolveTeamSession(request, env.DB);
     const actor = team ?? (standalone && !passwordMode ? await resolveCloudflareOwner(request, env) : null);
-    if (actor || request.headers.has('x-mobiliza-team-session')) {
+    if (actor) {
       const headers = new Headers(request.headers);
-      headers.delete('x-mobiliza-team-session');
-      if (actor) {
-        for (const name of [...headers.keys()]) {
-          if (name.startsWith('oai-authenticated-user-')) headers.delete(name);
-        }
-        headers.set('oai-authenticated-user-id', actor.userId);
-        headers.set('oai-authenticated-user-email', actor.email);
-        if (actor.fullName) {
-          headers.set('oai-authenticated-user-full-name', encodeURIComponent(actor.fullName));
-          headers.set('oai-authenticated-user-full-name-encoding', 'percent-encoded-utf-8');
-        }
-        if (team) headers.set('x-mobiliza-team-session', '1');
+      for (const name of [...headers.keys()]) {
+        if (name.startsWith('oai-authenticated-user-')) headers.delete(name);
       }
+      headers.set('oai-authenticated-user-id', actor.userId);
+      headers.set('oai-authenticated-user-email', actor.email);
+      if (actor.fullName) {
+        headers.set('oai-authenticated-user-full-name', encodeURIComponent(actor.fullName));
+        headers.set('oai-authenticated-user-full-name-encoding', 'percent-encoded-utf-8');
+      }
+      if (team) headers.set(TEAM_SESSION_HEADER, '1');
+      if (passwordSession?.revision != null) headers.set(PASSWORD_SESSION_REVISION_HEADER, String(passwordSession.revision));
       request = new Request(request, { headers });
     }
     return runWithRegionalAccess(request, env.DB, () => runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx)));

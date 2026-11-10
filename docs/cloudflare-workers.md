@@ -40,6 +40,8 @@ Aplique a migração D1 `0045_password_access` no banco do ambiente que receber�
 
 Para vincular uma conta existente, use `MOBILIZA_SUPABASE_MEMBERS` com um objeto JSON que associa o UUID do Supabase ao ID do membro ativo no D1. Confira o e-mail e a função do cadastro antes de vincular. O perfil de encarregado de manutenção mantém o acesso aos registros do Pará.
 
+Use o perfil **Administrador (ADM)** na área **Equipe** para conceder acesso integral ao painel, inclusive ao cadastro de outros administradores. Cada ADM tem seu próprio cadastro e pode ter seu acesso revogado na mesma área. Preserve o `SITE_OWNER_ID` e o vínculo do primeiro administrador para manter a referência dos dados existentes.
+
 Em um projeto dedicado ao Mobiliza, desative o cadastro público em **Authentication → Sign In / Providers** e mantenha a confirmação de e-mail. Defina `MOBILIZA_SUPABASE_AUTH=1` depois de preparar o administrador. Valide a entrada dele e o cadastro de um usuário fictício em **Equipe**. O administrador repassa a senha inicial diretamente, e a pessoa define sua própria senha no primeiro acesso. Revogue a conta fictícia ao terminar. [Configuração de autenticação](https://supabase.com/docs/guides/auth/general-configuration)
 
 Com Node.js 22.13 ou superior, valide localmente:
