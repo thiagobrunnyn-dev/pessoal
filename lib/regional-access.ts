@@ -5,7 +5,9 @@ import {RequestError} from './http-security';
 export const REGIONAL_EMAIL='manutencao@example.invalid';
 export const REGION_POLICY={states:['PA'],allWorksites:true} as const;
 type RegionalContext={regional:boolean;permitted:boolean;epoch:number;memberId:string|null;revision:number};
-const context=new AsyncLocalStorage<RegionalContext>();
+// A instância do AsyncLocalStorage é compartilhada via globalThis: o server.ts (fora do bundle do Next) abre o contexto
+// e os handlers (dentro do bundle) o leem. Instâncias distintas fariam getStore() voltar undefined e desligariam a restrição regional.
+const context:AsyncLocalStorage<RegionalContext>=((globalThis as any).__mobilizaRegionalContext??=new AsyncLocalStorage<RegionalContext>());
 export const isRegionalRequest=()=>context.getStore()?.regional===true;
 export function regionalWriteGuard(){const c=context.getStore();if(!c?.regional)return {sql:'1',args:[] as unknown[]};return {sql:c.permitted?'EXISTS(SELECT 1 FROM regional_epoch WHERE id=1 AND version=?)':'0',args:c.permitted?[c.epoch]:[]};}
 export function requireGlobalCatalog(){if(isRegionalRequest())throw new RequestError('Este cadastro é administrado pela gestão com acesso geral.',403);}

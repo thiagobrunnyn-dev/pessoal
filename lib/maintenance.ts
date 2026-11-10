@@ -1,5 +1,5 @@
 import {scopedSelect,scopedReadArgs,isRegionalRequest} from './regional-access';
-import { env } from 'cloudflare:workers';
+import { env } from './runtime/env';
 export function db(){if(!env.DB)throw new Error('Banco temporariamente indisponível.');return env.DB;}
 export function bucket(){if(!env.BUCKET)throw new Error('Fotos temporariamente indisponíveis.');return env.BUCKET;}
 export const INTERVAL_DAYS=90;

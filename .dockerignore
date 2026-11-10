@@ -1,0 +1,13 @@
+.git
+node_modules
+.next
+dist-server
+data
+.env
+.env.*
+!.env.example
+*.log
+.qa
+.sites-runtime
+.wrangler
+coverage

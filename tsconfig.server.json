@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "outDir": "dist-server",
+    "rootDir": ".",
+    "jsx": "preserve",
+    "types": ["node", "@cloudflare/workers-types"],
+    "plugins": []
+  },
+  "include": ["server/**/*.ts", "lib/runtime/**/*.ts", "lib/regional-access.ts", "lib/http-security.ts"],
+  "exclude": ["node_modules", ".next", "dist-server"]
+}
