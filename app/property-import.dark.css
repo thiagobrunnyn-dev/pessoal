@@ -1,0 +1,30 @@
+/* Generated from property-import.css by scripts/build-dark-theme.mjs. Do not edit: change property-import.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .property-import .pi-muted,:root[data-theme=dark] .property-import .pi-hint{color:#b4c4d0}
+:root[data-theme=dark] .pi-panel,:root[data-theme=dark] .pi-card{background-color:#101e2b;border-color:#223a4d}
+:root[data-theme=dark] .property-import input[type=file]{border-color:#2d4a5f;background-color:#101e2b;color:#e9f0f5}
+:root[data-theme=dark] .property-import input[type=file]::file-selector-button{border-color:#2a465b;background-color:#142635;color:#e9f0f5}
+:root[data-theme=dark] .pi-alert{border-color:#826050;color:#fead92;background-color:#352114}
+:root[data-theme=dark] .pi-status{color:#b4c4d0}
+:root[data-theme=dark] .pi-counts{color:#b4c4d0}
+:root[data-theme=dark] .pi-badge{background-color:#162838;color:#cad6df}
+:root[data-theme=dark] .pi-badge-valid,:root[data-theme=dark] .pi-badge-created{background-color:#122d1e;color:#96d5ae}
+:root[data-theme=dark] .pi-badge-duplicate,:root[data-theme=dark] .pi-badge-warning{background-color:#342301;color:#efb87c}
+:root[data-theme=dark] .pi-badge-invalid{background-color:#3a1c21;color:#fdabaa}
+:root[data-theme=dark] .pi-source-note{background-color:#142635;color:#cad6df}
+:root[data-theme=dark] .pi-card-invalid{border-color:#664147}
+:root[data-theme=dark] .pi-card-duplicate{border-color:#60491d}
+:root[data-theme=dark] .pi-fields dt{color:#b4c4d0}
+:root[data-theme=dark] .pi-issues{color:#efb87c}
+:root[data-theme=dark] .pi-card-invalid .pi-issues{color:#fdabaa}
+:root[data-theme=dark] .pi-duplicate{background-color:#312408}
+:root[data-theme=dark] .pi-source{border-top-color:#22394c}
+:root[data-theme=dark] .pi-source summary{color:#cad6df}
+:root[data-theme=dark] .pi-source summary::marker{color:#92a7b8}
+:root[data-theme=dark] .pi-created{border-top-color:#3c5346}
+:root[data-theme=dark] .pi-created>strong{color:#96d5ae}
+:root[data-theme=dark] .pi-success{border-color:#50725b;background-color:#132433}
+:root[data-theme=dark] .pi-warning{color:#efb87c}
+:root[data-theme=dark] .pi-acknowledgement{background-color:#142434;border-color:#223a4d}
+}

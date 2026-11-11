@@ -1,0 +1,5 @@
+/* Generated from cadastros.css by scripts/build-dark-theme.mjs. Do not edit: change cadastros.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .cadastro-grid .cadastro-restricted{color:#92a7b8}
+}

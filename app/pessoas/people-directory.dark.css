@@ -1,0 +1,21 @@
+/* Generated from people-directory.css by scripts/build-dark-theme.mjs. Do not edit: change people-directory.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .person-private{border-top-color:#22394c;border-bottom-color:#22394c}
+:root[data-theme=dark] .people-view-menu nav a[aria-current=page]{background-color:#38200e;color:#ffae78}
+:root[data-theme=dark] .people-card-menu>summary{border-color:#22394c;background-color:#101e2b}
+:root[data-theme=dark] .people-card-menu>nav>button{background-color:#101e2b;color:#e9f0f5}
+:root[data-theme=dark] .people-card-menu>nav>button:hover{background-color:#142635}
+:root[data-theme=dark] .people-card-menu>nav>.people-remove{color:#fdaca1}
+:root[data-theme=dark] .people-city-input[data-slot=input-group]{border-color:#314e64;background-color:#101e2b}
+:root[data-theme=dark] .people-city-input button{color:#c4d1db}
+:root[data-theme=dark] .people-city-popup{background-color:#101e2b;color:#e9f0f5;border-color:#2b475c}
+:root[data-theme=dark] .people-city-popup [data-slot=combobox-item][data-highlighted]{background-color:#38200c;color:#fcb08a}
+:root[data-theme=dark] .people-city-source{border-top-color:#20374a;color:#b4c4d0}
+:root[data-theme=dark] .people-control{color:#a8bac7}
+:root[data-theme=dark] .people-number-setup{border-color:#22394c;background-color:#142534}
+:root[data-theme=dark] .people-number-setup p{color:#92a7b8}
+:root[data-theme=dark] .person-assignment{border-color:#22394c}
+:root[data-theme=dark] .people-filter-panel{border-color:#22394c}
+:root[data-theme=dark] .people-completeness{color:#d6c299}
+}

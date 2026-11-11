@@ -38,6 +38,9 @@ function SceneLife({scene}: {scene: 'stay' | 'laundry' | 'maintenance'}) {
 export default function PublicHome({signInHref}: {signInHref: string}) {
   return (
     <div className={styles.home} id="inicio" data-home-root>
+      {/* This page keeps its own light palette whatever look the panel uses: the attribute is
+          reset before anything paints. */}
+      <script dangerouslySetInnerHTML={{__html: "document.documentElement.dataset.theme='light'"}}/>
       <a className={styles.skipLink} href="#conteudo">Ir para o conteúdo</a>
       <HomeMotion/>
       <header className={styles.header}>

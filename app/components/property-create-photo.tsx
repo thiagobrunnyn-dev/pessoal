@@ -3,6 +3,7 @@ import {useEffect, useRef, useState} from 'react';
 import {PropertyFrontPhotoPicker} from './property-details-fields';
 import {prepareMobilizationPhoto} from '../mobilization-form';
 import './property-create-photo.css';
+import './property-create-photo.dark.css';
 
 /** Preparation stays on this device. Never fall back to the original image. */
 export async function prepareFrontPhoto(file: File) {

@@ -1,5 +1,6 @@
 'use client';
 import './equipment-public.css';
+import './equipment-public.dark.css';
 import MaintenanceEvidenceFields,{EvidenceStatus,phaseLabel} from './components/maintenance-evidence-fields';
 import PhotoFileControls from './components/photo-file-controls';
 import ServicePeople from './components/service-people';

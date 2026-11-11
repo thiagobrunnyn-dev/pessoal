@@ -6,6 +6,7 @@ import {GUEST_KIND_LABELS, GUEST_SCORE_LABELS, guestDate, guestJson, type GuestI
 import {guestCategoryLabel} from '../../lib/guest-request-categories';
 import GuestRequestTriage from './guest-request-triage';
 import './guest-requests.css';
+import './guest-requests.dark.css';
 
 type Summary = {
   id: string; protocol: string; kind: GuestRequestKind; status: string; received_at: string;

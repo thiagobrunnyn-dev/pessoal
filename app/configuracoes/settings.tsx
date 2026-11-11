@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {ArrowLeft,ArrowUpRight,BookOpen,Check,Copy,Download,KeyRound,Link2,MapPin,Plus,RefreshCw,Search,Settings2,ShieldCheck,UsersRound,X} from 'lucide-react';
 import {API_PREFIX,DEFAULT_ORIGIN,integrationCatalog,integrationOpenApi,n8nStarter,exampleClient,exampleArchive,type Endpoint} from '../../lib/integration-docs';
 import './settings.css';
+import './settings.dark.css';
 
 type KeyInfo={id:string;name:string;prefix:string;permission:'read'|'write';created_at:string;expires_at:string;revoked_at:string|null;last_used_at:string|null};
 type Tab='overview'|'keys'|'docs'|'n8n';

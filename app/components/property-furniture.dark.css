@@ -1,0 +1,24 @@
+/* Generated from property-furniture.css by scripts/build-dark-theme.mjs. Do not edit: change property-furniture.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .pf-empty p{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .pf-environment{border-top-color:#22394c}
+:root[data-theme=dark] .pf-item{border-color:#22394c;background-color:#101e2b}
+:root[data-theme=dark] .pf-quantities dt{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .pf-missing{color:#fca1a0}
+:root[data-theme=dark] .pf-note{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .pf-dialog{background-color:#101e2b;color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .pf-dialog::backdrop{background-color:#182b3acc}
+:root[data-theme=dark] .pf-preview img{background-color:#142635}
+:root[data-theme=dark] .pf-photo-grid figure{border-color:#22394c}
+:root[data-theme=dark] .pf-photo-grid figcaption small{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .pf-draft-environment{border-top-color:#22394c}
+:root[data-theme=dark] .pf-draft-item{border-color:#22394c;background-color:#132332}
+:root[data-theme=dark] .pf-item-details>summary{color:var(--orange-dark,#ffae78)}
+:root[data-theme=dark] .pf-resume{border-color:#694326;background-color:#362110}
+:root[data-theme=dark] .pf-structure-dialog .form-actions{background-color:#101e2b;border-top-color:#22394c}
+:root[data-theme=dark] .pf-standard{border-color:#713e19;background-color:#132332}
+:root[data-theme=dark] .pf-standard-choice{border-bottom-color:#22394c}
+:root[data-theme=dark] .pf-standard-items{color:#92a7b8}
+:root[data-theme=dark] .pf-draft-item input:disabled{background-color:#162939;color:#93a8b8}
+}

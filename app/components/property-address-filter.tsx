@@ -2,6 +2,7 @@
 import {useId, useState} from 'react';
 import {matchPropertyAddress, type PropertyAddressOption} from '../../lib/property-address-options';
 import './property-address-filter.css';
+import './property-address-filter.dark.css';
 
 export default function PropertyAddressFilter({options, value, onChange, disabled = false}: {options: PropertyAddressOption[]; value: string; onChange: (id: string) => void; disabled?: boolean}) {
   const [query, setQuery] = useState('');

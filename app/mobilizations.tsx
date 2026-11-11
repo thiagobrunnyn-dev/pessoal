@@ -16,6 +16,7 @@ import {
   prepareMobilizationPhoto, type DraftSource, type EquipmentDraft, type MobilizationDraft,
 } from './mobilization-form';
 import './mobilizations.css';
+import './mobilizations.dark.css';
 
 type Property = {id: string; name: string; address: string; state_code?: string; control_number?: number};
 type Snapshot = DraftSource & {

@@ -2,6 +2,7 @@
 import PropertyCapacitySummary from './components/property-capacity-summary';
 import {PropertyTextInput,PropertyTextArea} from './components/property-text';
 import './equipment-public.css';
+import './equipment-public.dark.css';
 import MaintenanceEvidenceFields,{EvidenceStatus,phaseLabel} from './components/maintenance-evidence-fields';
 import EquipmentPublicSetting from './components/equipment-public-setting';
 import PropertyFrontThumbnail from './components/property-front-thumbnail';

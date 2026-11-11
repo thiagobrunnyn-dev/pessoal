@@ -1,0 +1,111 @@
+/*
+ * Shared theme layer, loaded once by app/layout.tsx.
+ *
+ *  - Tokens of the two looks. Dark is the default; the chosen look lives on <html data-theme>,
+ *    set on the server from the cookie (lib/hub-theme.ts) and switched by the theme button.
+ *  - The theme button.
+ *  - The common frame of the internal screens: the dashboard sidebar and header around each
+ *    screen (components/app-shell.tsx), which turns the old top bar into a slim title strip.
+ *  - Hand-made adjustments on top of the generated *.dark.css sheets (scripts/build-dark-theme.mjs).
+ *
+ * Rules here start with :root so they win over the generated sheets, whose selectors are
+ * `:root[data-theme=dark] <original selector>`.
+ */
+
+/* ---------- Tokens ---------- */
+:root{
+ color-scheme:light;
+ --hub-bg:#f2f5f8;--hub-surface:#ffffff;--hub-surface-2:#f6f9fb;--hub-line:#d9e2e8;--hub-line-soft:#ebf0f3;
+ --hub-ink:#1d3443;--hub-muted:#5d7281;--hub-accent:#c84608;--hub-accent-ink:#a8460d;--hub-accent-soft:#fff0e5;--hub-accent-line:#f3c9ac;
+ --hub-side:#1d3443;--hub-header:#ffffff;--hub-track:#e9eef2;--hub-shadow:0 1px 2px #1d34430a,0 8px 24px -16px #1d344330;
+ --hub-card:var(--hub-surface);--hub-glow:none;--hub-live:#1a8f5c;
+ /* Chart series: fixed order, checked for colour-blind separation on each surface. */
+ --series-orders:#eb6834;--series-air:#2a78d6;--series-cleaning:#1baf7a;--series-available:#c5d3dc;
+ --tone-good:#1f8a5f;--tone-info:#2a78d6;--tone-warn:#b8730f;--tone-neutral:#7b8a95;
+ --alert-bg:#fff7eb;--alert-line:#eed9b8;--alert-ink:#704609;--late-bg:#fff1ee;--late-line:#eecac0;--late-ink:#923321;
+}
+:root[data-theme=dark]{
+ color-scheme:dark;
+ --hub-bg:#08121a;--hub-surface:#101e2b;--hub-surface-2:#152737;--hub-line:#223a4d;--hub-line-soft:#1a2e3e;
+ --hub-ink:#e9f0f5;--hub-muted:#94a9b9;--hub-accent:#ff8a3d;--hub-accent-ink:#ffae78;--hub-accent-soft:#ff8a3d1c;--hub-accent-line:#ff8a3d55;
+ --hub-side:#0b1722;--hub-header:#0b1722;--hub-track:#1b3042;--hub-shadow:0 1px 0 #ffffff08 inset,0 18px 40px -28px #000000;
+ --hub-card:linear-gradient(180deg,#13232f 0%,#0f1c28 100%);--hub-glow:0 0 0 1px #ff8a3d2e,0 0 22px #ff8a3d24;--hub-live:#35d39a;
+ --series-orders:#d95926;--series-air:#3987e5;--series-cleaning:#199e70;--series-available:#2c475c;
+ --tone-good:#22a877;--tone-info:#3987e5;--tone-warn:#d9952b;--tone-neutral:#6f8494;
+ --alert-bg:#3a2a0f;--alert-line:#6b4c17;--alert-ink:#ffd591;--late-bg:#3b1a17;--late-line:#74322b;--late-ink:#ffb4a6;
+ /* The older shared properties follow the dark look wherever a rule still reads them. */
+ --ink:var(--hub-ink);--muted:var(--hub-muted);--line:var(--hub-line);--bg:var(--hub-bg);--orange-dark:var(--hub-accent-ink);
+}
+
+/* ---------- Theme button ---------- */
+.theme-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 13px;border:1px solid var(--hub-line);border-radius:999px;background:var(--hub-surface-2);color:var(--hub-ink);font:inherit;font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap;cursor:pointer;transition:border-color .15s,background .15s}
+.theme-toggle:hover{border-color:var(--hub-accent-line)}
+.theme-toggle svg{color:var(--hub-accent);flex-shrink:0}
+.theme-toggle .when-dark,:root[data-theme=dark] .theme-toggle .when-light{display:none}
+:root[data-theme=dark] .theme-toggle .when-dark{display:inline-block}
+/* The root layout renders one floating button for the screens without the sidebar frame (login,
+   public forms, QR pages). Framed screens have the button in their header; the institutional
+   home and the embedded map editor do not follow the theme. */
+.theme-toggle-floating{position:fixed;left:14px;bottom:14px;z-index:35;min-height:42px;padding:9px 12px;box-shadow:0 8px 22px -12px #000000b3}
+body:has(.hub-workspace) .theme-toggle-floating,body:has([data-home-root]) .theme-toggle-floating,body:has(.google-map-frame) .theme-toggle-floating{display:none}
+
+/* ---------- Frame of the internal screens ---------- */
+.app-content{margin-left:240px;min-width:0}
+/* The sidebar stays under dialogs (40), toasts (60) and the photo viewer (80). */
+:root .hub-workspace.app-workspace .hub-sidebar{z-index:30}
+:root .hub-workspace.app-workspace .topbar{height:auto;min-height:0;padding:18px 32px 0;border:0;background:transparent;gap:14px;align-items:center}
+:root .hub-workspace.app-workspace .topbar .brand{gap:0;min-width:0;cursor:default}
+:root .hub-workspace.app-workspace .topbar .brand img{display:none}
+:root .hub-workspace.app-workspace .topbar .brand br{display:none}
+/* Only the screen name is kept from the old brand block ("MOBILIZA GESTÃO / Hoje"). */
+:root .hub-workspace.app-workspace .topbar .brand span{padding:0;border:0;font-size:0;line-height:0}
+:root .hub-workspace.app-workspace .topbar .brand strong{font-size:11px;font-weight:800;letter-spacing:.14em;line-height:1.6;text-transform:uppercase;color:var(--hub-accent-ink)}
+/* Name and role already sit in the sidebar; header slots that hold controls stay. */
+:root .hub-workspace.app-workspace .topbar .private,:root .hub-workspace.app-workspace .topbar .clean-header-label:not(:has(a,button,details,select,input)){display:none}
+:root .hub-workspace.app-workspace .shell{max-width:1440px;margin:0;padding:18px 32px 44px}
+:root .hub-workspace.app-workspace .nav-back[href="/"],:root .hub-workspace.app-workspace .topbar a.button[href="/"]{display:none}
+/* The strip only shows what the screen does not show already: its name when the screen has no
+   heading of its own, and its controls. With neither, it is not drawn. */
+:root .hub-workspace.app-workspace .app-content:has(h1) .topbar .brand{display:none}
+:root .hub-workspace.app-workspace .app-content:has(h1) .topbar:not(:has(button,select,input,details,a.button:not([href="/"]))){display:none}
+/* The screens were laid out for the full window width. Below 1180px the sidebar would squeeze
+   them, so it gives way to the "Menu" button of the header (same entries), as on phones. */
+@media(max-width:1180px){
+ .app-content{margin-left:0}
+ :root .hub-workspace.app-workspace .hub-sidebar{display:none}
+ :root .hub-workspace.app-workspace .hub-compact-header{position:relative;margin-left:0;padding:0 24px;justify-content:space-between;gap:12px}
+ :root .hub-workspace.app-workspace .hub-header-label{display:none}
+ :root .hub-workspace.app-workspace .hub-mobile-brand{display:flex;align-items:center;gap:8px;min-width:0;margin-right:auto;font-size:16px;font-weight:700;line-height:1.15}
+ :root .hub-workspace.app-workspace .hub-mobile-brand img{display:block;flex:none;width:36px;height:36px;object-fit:contain;border-radius:7px}
+ :root .hub-workspace.app-workspace .hub-mobile-navigation{display:block;position:static}
+ :root .hub-workspace.app-workspace .hub-mobile-navigation>summary{list-style:none;display:flex;align-items:center;gap:7px;min-height:44px;padding:9px 11px;border:1px solid var(--hub-line);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+ :root .hub-workspace.app-workspace .hub-mobile-navigation>summary::-webkit-details-marker{display:none}
+ :root .hub-workspace.app-workspace .hub-mobile-menu{position:absolute;top:calc(100% + 1px);left:12px;right:auto;width:min(360px,calc(100vw - 24px));max-height:calc(100dvh - 84px);overflow:auto;padding:12px;color:#e9eff3;border-radius:0 0 12px 12px;box-shadow:0 12px 24px #162d4630;z-index:80}
+ :root .hub-workspace.app-workspace .hub-mobile-user{display:grid;gap:4px;padding:10px 12px 14px;border-bottom:1px solid #ffffff20;margin-bottom:10px;font-size:14px;overflow-wrap:anywhere}
+ :root .hub-workspace.app-workspace .hub-mobile-user small{color:#c8d4dc;font-size:12px}
+ :root .hub-workspace.app-workspace .topbar{padding:16px 24px 0}
+ :root .hub-workspace.app-workspace .shell{padding:16px 24px 36px}
+}
+@media(max-width:760px){
+ :root .hub-workspace.app-workspace .hub-compact-header{padding:0 14px}
+ :root .hub-workspace.app-workspace .hub-mobile-menu{right:12px;width:auto}
+ :root .hub-workspace.app-workspace .topbar{padding:14px 16px 0;flex-wrap:wrap}
+ :root .hub-workspace.app-workspace .shell{padding:14px 16px 30px}
+ .theme-toggle{padding:9px 11px}.theme-toggle-label{display:none}
+}
+
+/* ---------- Adjustments over the generated dark sheets ---------- */
+/* The logo file has a white background: on dark it sits on a rounded plate. */
+:root[data-theme=dark] .guest-brand img,:root[data-theme=dark] .topbar .brand img{border-radius:8px}
+
+/* ---------- Print: paper is always light ---------- */
+@media print{
+ :root[data-theme=dark]{
+  color-scheme:light;
+  --hub-bg:#fff;--hub-surface:#fff;--hub-surface-2:#fff;--hub-card:#fff;--hub-line:#cfd8de;--hub-line-soft:#e3e9ed;--hub-ink:#1d3443;--hub-muted:#4f6472;--hub-track:#e9eef2;--hub-shadow:none;--hub-glow:none;
+  --hub-accent:#c84608;--hub-accent-ink:#a8460d;--hub-accent-soft:#fff0e5;--hub-accent-line:#f3c9ac;--hub-side:#1d3443;--hub-header:#fff;
+  --ink:#203746;--muted:#667783;--line:#e0e5e8;--bg:#fff;--orange-dark:#c84608;
+ }
+ .app-content{margin-left:0}
+ .theme-toggle{display:none}
+}

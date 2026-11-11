@@ -1,0 +1,53 @@
+/* Generated from settings.css by scripts/build-dark-theme.mjs. Do not edit: change settings.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .settings-eyebrow{color:#fca581}
+:root[data-theme=dark] .settings-admin{background-color:#162939;color:#a8cfb7}
+:root[data-theme=dark] .settings-tabs{border-bottom-color:#223a4d}
+:root[data-theme=dark] .settings-tabs button{color:#91a7b7}
+:root[data-theme=dark] .settings-tabs button[aria-current]{color:#fca581;border-bottom-color:#e65f14}
+:root[data-theme=dark] .settings-tabs button:hover{background-color:#352211}
+:root[data-theme=dark] .integration-hero{background-color:#342213;border-color:#624630}
+:root[data-theme=dark] .integration-hero p{color:#d2c0b6}
+:root[data-theme=dark] .integration-stats{border-left-color:#674428}
+:root[data-theme=dark] .integration-stats strong{color:#e6eef3}
+:root[data-theme=dark] .integration-stats span:not(.api-method){color:#c8bbb3}
+:root[data-theme=dark] .settings-card{background-color:#101e2b;border-color:#22394c;color:#e7eef3}
+:root[data-theme=dark] .settings-card:hover{border-color:#e97c42}
+:root[data-theme=dark] .settings-card>svg{color:#ffa479}
+:root[data-theme=dark] .settings-card p{color:#91a7b7}
+:root[data-theme=dark] .settings-card>span{color:#fca57f}
+:root[data-theme=dark] .settings-panel{background-color:#101e2b;border-color:#22394c}
+:root[data-theme=dark] .api-code{background-color:#1b3041;border-color:#85a0b4;color:#d9e6ee}
+:root[data-theme=dark] .api-code>div{border-bottom-color:#7b99ae}
+:root[data-theme=dark] .api-code>div>span{color:#758a9a}
+:root[data-theme=dark] .api-code button{background-color:#233d53;color:#edf4f8}
+:root[data-theme=dark] .method-get{background-color:#042e20;color:#82d2a7}
+:root[data-theme=dark] .method-post{background-color:#182b3c;color:#a5c5fc}
+:root[data-theme=dark] .method-delete{background-color:#3c1c16;color:#ffa192}
+:root[data-theme=dark] .settings-empty{color:#91a6b6}
+:root[data-theme=dark] .settings-empty>svg{color:#768b9b}
+:root[data-theme=dark] .settings-message{background-color:#152737;border-color:#3b5447}
+:root[data-theme=dark] .settings-message.error{background-color:#372014;border-color:#6e4022;color:#fdaf8c}
+:root[data-theme=dark] .secret-panel{background-color:#2f2500;border-color:#5d4b03}
+:root[data-theme=dark] .key-row{border-top-color:#20374a}
+:root[data-theme=dark] .key-row p{color:#99aebd}
+:root[data-theme=dark] .key-row small{color:#91a6b6}
+:root[data-theme=dark] .key-status{background-color:#162838;color:#91a6b6}
+:root[data-theme=dark] .key-status.active{background-color:#112d1d;color:#8dcfa7}
+:root[data-theme=dark] .api-rules p{border-bottom-color:#1f3547}
+:root[data-theme=dark] .api-rules strong{color:#e3ebf0}
+:root[data-theme=dark] .api-example{border-top-color:#21384a}
+:root[data-theme=dark] .api-endpoint{border-color:#21394c}
+:root[data-theme=dark] .api-endpoint-toggle{background-color:#122130;color:#dee7ed}
+:root[data-theme=dark] .api-endpoint-toggle code{color:#8fa4b4}
+:root[data-theme=dark] .api-endpoint-detail{border-top-color:#21394c}
+:root[data-theme=dark] .settings-table th{background-color:#142535;color:#a6b8c6}
+:root[data-theme=dark] .settings-table th,:root[data-theme=dark] .settings-table td{border-bottom-color:#21384a}
+:root[data-theme=dark] .n8n-steps>li{border-bottom-color:#20374a}
+:root[data-theme=dark] .n8n-steps>li>span{background-color:#392007;color:#fca57f}
+:root[data-theme=dark] .n8n-steps p{color:#a3b6c4}
+@media(max-width:800px){
+:root[data-theme=dark] .integration-stats{border-top-color:#674428}
+}
+}
