@@ -349,7 +349,11 @@ html:has(.home){scroll-behavior:smooth}
  .scene>span,.panelVideo{display:none}
 }
 @media print{
+ /* Paper must not depend on scrolling or on browser defaults: every section is shown
+    and the dark bands keep their background, so light text stays readable. */
+ .home{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .home[data-motion=ready] [data-reveal]{opacity:1!important;transform:none!important}
  .header{position:static}
  .assistantTrigger,.menuButton,.scene>span{display:none}
- .home *,.home *::before,.home *::after{animation:none!important}
+ .home *,.home *::before,.home *::after{animation:none!important;transition:none!important}
 }

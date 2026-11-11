@@ -80,5 +80,15 @@ test('as sete soluções aparecem nos cartões e na lista do formulário', () =>
   assert.equal((html.match(/Tenho interesse/g) || []).length, 7);
 });
 
+test('a impressão mostra todas as seções, mesmo sem ter rolado a página', () => {
+  const css = fs.readFileSync(path.join(root, 'app/public-home.module.css'), 'utf8');
+  // As seções entram com opacidade 0 até serem vistas; no papel isso precisa ser desfeito.
+  assert.match(css, /\.home\[data-motion=ready\] \[data-reveal\]\{opacity:0;/);
+  const print = css.slice(css.lastIndexOf('@media print{'));
+  assert.match(print, /\.home\[data-motion=ready\] \[data-reveal\]\{opacity:1!important;transform:none!important\}/);
+  assert.match(print, /print-color-adjust:exact/);
+  assert.match(print, /animation:none!important;transition:none!important/);
+});
+
 console.log(JSON.stringify({passed: report.filter(item => item[1]).length, total: report.length}));
 if (report.some(item => !item[1])) process.exitCode = 1;
