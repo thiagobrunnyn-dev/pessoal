@@ -15,8 +15,8 @@ export async function generateMetadata() {
   return user
     ? {title: 'Visão Geral da Operação'}
     : {
-        title: {absolute: 'Mobiliza Facilities | Gestão e solicitações'},
-        description: 'Conheça o Mobiliza Facilities, envie solicitações de manutenção ou compra e acesse o painel da equipe.',
+        title: {absolute: 'Mobíliza | Estrutura para o seu próximo passo'},
+        description: 'Conheça as soluções da Mobíliza em hospedagem corporativa, lavanderia industrial e manutenção, envie uma solicitação ou acesse o painel da equipe.',
       };
 }
 
