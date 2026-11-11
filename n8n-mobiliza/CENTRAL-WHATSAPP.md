@@ -30,11 +30,12 @@ Todos usam o endpoint `/api/integrations/v1/whatsapp`, implementado em `lib/what
 
 1. **Banco:** aplique a migração `drizzle/0045_whatsapp_central.sql` no ambiente e publique esta versão do painel.
 2. **Chave do painel:** em Configurações → Credenciais, crie uma chave com permissão de **escrita**.
-3. **Credencial no n8n:** crie a credencial `Mobiliza · Central WhatsApp (escrita)` com o cabeçalho `Authorization: Bearer mbl_...` e selecione-a em todos os nós HTTP dos cinco fluxos.
+3. **Credencial no n8n:** crie a credencial `Mobiliza · Central WhatsApp (escrita)`, do tipo Header Auth, com o campo Name `Authorization` e o campo Value `Bearer mbl_...`, e selecione-a em todos os nós HTTP dos cinco fluxos.
 4. **URL do painel:** os nós HTTP apontam para `https://mobilizafacilities.com.br`. Troque se o ambiente for outro.
-5. **Sessão do WAHA:** os nós do WAHA usam a sessão `default`. Troque nos fluxos de grupos e de envio se a sua tiver outro nome.
-6. **Webhook do WAHA:** na sessão do WAHA, adicione um webhook para a URL de produção do nó "Evento do WAHA" (fluxo de captura), com o evento `message.any` e um cabeçalho secreto. Configure o mesmo cabeçalho na credencial desse nó.
-7. **Ordem para ligar:** Sincronizar grupos → marque os grupos no painel → Captura → Análise → Resumo diário → Envio.
+5. **Sessão do WAHA:** os nós do WAHA (fluxos de grupos, de envio e do agente) precisam do nome real da sessão. Confira o nome no painel do WAHA; uma sessão inexistente faz o WAHA responder erro 422.
+6. **Fuso horário:** se o n8n rodar em UTC, defina o fuso (por exemplo `America/Sao_Paulo`) nas configurações dos fluxos com horário fixo: Resumo diário e Agente da gestão.
+7. **Webhook do WAHA:** na sessão do WAHA, adicione um webhook para a URL de produção do nó "Evento do WAHA" (fluxo de captura), com o evento `message.any` e um cabeçalho secreto. Configure o mesmo cabeçalho na credencial desse nó.
+8. **Ordem para ligar:** Sincronizar grupos → marque os grupos no painel → Captura → Análise → Resumo diário → Envio.
 
 ## Limites
 
@@ -60,7 +61,7 @@ Para ativar:
 
 1. Crie o grupo da gestão com o número da operação e copie o identificador dele (termina em `@g.us`; aparece na lista de grupos do WAHA e na Central).
 2. No nó "Preparar pedido", preencha `GRUPO_DA_GESTAO`. Enquanto estiver vazio, o agente não responde a ninguém.
-3. No painel, crie uma chave **somente leitura**; no n8n, crie a credencial `Mobiliza · Agente da gestão (leitura)` com `Authorization: Bearer mbl_...` e selecione-a nas seis ferramentas.
+3. No painel, crie uma chave **somente leitura**; no n8n, crie a credencial `Mobiliza · Agente da gestão (leitura)`, do tipo Header Auth, com Name `Authorization` e Value `Bearer mbl_...`, e selecione-a nas seis ferramentas.
 4. No WAHA, aponte um webhook com o evento `message` (não `message.any`) para a URL de produção do nó "Mensagem do WAHA", com um cabeçalho secreto igual ao da credencial desse nó.
 5. Não marque o grupo da gestão como acompanhado na Central, para as perguntas e respostas não entrarem na análise dos grupos.
 
