@@ -12,3 +12,6 @@
 
 /mobiliza-logo-0cff20bedde7.jpeg
   Cache-Control: public, max-age=31536000, immutable
+
+/home/*
+  Cache-Control: public, max-age=31536000, immutable
