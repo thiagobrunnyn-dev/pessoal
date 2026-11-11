@@ -9,7 +9,7 @@
 .gr-filters{display:grid;grid-template-columns:2fr 1.4fr 1fr 1fr;gap:14px}
 .gr-filters .field{min-width:0;margin:0}
 .gr-filters .field>span{font-size:14px}
-.gr-filters input,.gr-filters select{width:100%;max-width:100%;min-height:46px;font-size:16px}
+.gr-filters input:not([type=checkbox]),.gr-filters select{width:100%;max-width:100%;min-height:46px;font-size:16px}
 .gr-count{font-size:14px;color:#526672;margin:16px 0}
 .gr-card.panel{display:flex;align-items:flex-start;gap:22px;margin-bottom:14px;padding:24px}
 .gr-card-main{min-width:0;flex:1}

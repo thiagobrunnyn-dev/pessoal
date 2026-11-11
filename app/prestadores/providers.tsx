@@ -6,6 +6,7 @@ import {BRAZIL_STATES} from '../../lib/brazil-states';
 import {uppercasePropertyText} from '../../lib/property-text';
 import {serviceRequest} from '../components/service-http';
 import '../servicos-laudos/services.css';
+import '../servicos-laudos/services.dark.css';
 type Row=Record<string,any>;
 const empty={name:'',tax_registration:'',phone:'',email:'',address:'',services:'',technical_responsible:'',scope_states:[] as string[]};
 export default function Providers({displayName,initialData}:{displayName:string;initialData:Row|null}){

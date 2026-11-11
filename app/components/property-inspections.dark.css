@@ -1,0 +1,20 @@
+/* Generated from property-inspections.css by scripts/build-dark-theme.mjs. Do not edit: change property-inspections.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .piv-help{color:var(--muted,#94a9b9)}
+:root[data-theme=dark] .piv-row{border-color:#233b4e}
+:root[data-theme=dark] .piv-row small{color:var(--muted,#94a9b9)}
+:root[data-theme=dark] .piv-empty p{color:var(--muted,#94a9b9)}
+:root[data-theme=dark] .piv-dialog{background-color:#101e2b;color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .piv-dialog::backdrop{background-color:#182b3acc}
+:root[data-theme=dark] .piv-section{border-top-color:#233b4e}
+:root[data-theme=dark] .piv-environment{border-color:#233b4e;background-color:#132231}
+:root[data-theme=dark] .piv-item{border-color:#233b4e;background-color:#101e2b}
+:root[data-theme=dark] .piv-item-details dt,:root[data-theme=dark] .piv-summary dt{color:var(--muted,#94a9b9)}
+:root[data-theme=dark] .piv-photo-grid figure{border-color:#233b4e}
+:root[data-theme=dark] .piv-photo-grid img{background-color:#152636}
+:root[data-theme=dark] .piv-snapshot{border-left-color:#bc6c36;background-color:#332311}
+:root[data-theme=dark] .piv-notice{background-color:#152737;color:#a0d1b9}
+:root[data-theme=dark] .piv-warning{background-color:#332305}
+:root[data-theme=dark] .piv-history li{border-bottom-color:#233b4e}
+}

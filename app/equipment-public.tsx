@@ -2,6 +2,7 @@
 import {useEffect,useState,useRef} from 'react';
 import {Wind,KeyRound,RefreshCw,X} from 'lucide-react';
 import './equipment-public.css';
+import './equipment-public.dark.css';
 type Photo={id:string;phase:string;position:number};
 type RecordRow={id:string;date:string;time:string;completion:string;evidence:string;checklist:{item:string;status:string}[];photos:Photo[]};
 type Data={equipment:{code:string;name:string;location:string};history:RecordRow[];page:number;nextPage:number|null};

@@ -8,6 +8,7 @@ import {INSPECTION_LABELS, inspectionPhotoUrl, inspectionSignatureUrl, numberedE
 import type {InspectionEditorProps} from './property-inspection-editor';
 import type {InspectionSignatureProps} from './property-inspection-signature';
 import './property-inspections.css';
+import './property-inspections.dark.css';
 
 type ListResponse = {property: InspectionPropertySnapshot & {archived_at?: string | null}; inspections: InspectionSummary[]; truncated?: boolean};
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Não foi possível concluir. Tente novamente.';

@@ -1,0 +1,18 @@
+/* Generated from guest-requests.css by scripts/build-dark-theme.mjs. Do not edit: change guest-requests.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .gr-topline>span{color:#b3c3cf}
+:root[data-theme=dark] .gr-count{color:#b3c3cf}
+:root[data-theme=dark] .gr-card .gr-kind{color:#fda483}
+:root[data-theme=dark] .gr-card p.gr-meta,:root[data-theme=dark] .gr-help{color:#b3c3cf}
+:root[data-theme=dark] .gr-empty p{color:#b3c3cf}
+:root[data-theme=dark] .gr-detail-heading p:not(.eyebrow){color:#b3c3cf}
+:root[data-theme=dark] .gr-declared{border-color:#243d51;background-color:#142535}
+:root[data-theme=dark] .gr-fields dt{color:#b3c3cf}
+:root[data-theme=dark] .gr-detail-section{border-top-color:#22394c}
+:root[data-theme=dark] .gr-materials>li{border-bottom-color:#22394c}
+:root[data-theme=dark] .gr-photos>a{border-color:#304d63}
+:root[data-theme=dark] .gr-events>li{border-bottom-color:#22394c}
+:root[data-theme=dark] .gr-events>li>p{color:#b3c3cf}
+:root[data-theme=dark] .gr-events>li>p.gr-full-text{color:var(--ink,#e9f0f5)}
+}

@@ -1,0 +1,16 @@
+/* Generated from mobilizations.css by scripts/build-dark-theme.mjs. Do not edit: change mobilizations.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .mobilization-overdue{color:#fca1a0}
+:root[data-theme=dark] .mobilization-loading{background-color:#38200e}
+:root[data-theme=dark] .mobilization-edit-item{border-bottom-color:#22394c}
+:root[data-theme=dark] .mobilization-form-property{border-top-color:#22394c}
+:root[data-theme=dark] .mobilization-read-list>li{border-bottom-color:#1f3547}
+:root[data-theme=dark] .mobilization-read-list small{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .mobilization-summary-environment{border-top-color:#22394c}
+:root[data-theme=dark] .mobilization-snapshot-values{border-color:#22394c;background-color:#122231}
+:root[data-theme=dark] .mobilization-photos>button{border-color:#22394c;background-color:#142635;color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .mobilization-photo-dialog{background-color:#101e2b}
+:root[data-theme=dark] .mobilization-photo-dialog::backdrop{background-color:#182b3add}
+:root[data-theme=dark] .mobilization-photo-caption{color:var(--muted,#92a7b8)}
+}

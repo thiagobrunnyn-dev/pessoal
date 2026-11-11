@@ -1,0 +1,8 @@
+/* Generated from google-maps.css by scripts/build-dark-theme.mjs. Do not edit: change google-maps.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .google-map-iframe{background-color:#152636}
+:root[data-theme=dark] .google-map-frame{background-color:#152636}
+:root[data-theme=dark] .google-map-frame-message{background-color:#152636}
+:root[data-theme=dark] .google-property-pin>span{border-color:#1c3143;background-color:#ed641a}
+}

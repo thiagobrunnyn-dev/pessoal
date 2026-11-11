@@ -1,0 +1,79 @@
+/* Generated from occupancy.css by scripts/build-dark-theme.mjs. Do not edit: change occupancy.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .occ-panel,:root[data-theme=dark] .occ-overview{border-color:#22394c;background-color:#101e2b}
+:root[data-theme=dark] .occ-section-heading p{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-stat{background-color:#132332;border-color:#203648}
+:root[data-theme=dark] .occ-stat>svg{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-stat>strong{color:var(--navy,#e9f0f5)}
+:root[data-theme=dark] .occ-stat>span{color:#92a7b8}
+:root[data-theme=dark] .occ-help,:root[data-theme=dark] .occ-footnote{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-footnote{border-top-color:#22394c}
+:root[data-theme=dark] .occ-property-card{background-color:#101e2b;border-color:#22394c;border-top-color:#ed641a}
+:root[data-theme=dark] .occ-house-icon{background-color:#38200e;color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-kicker{color:#fdaf86}
+:root[data-theme=dark] .occ-address{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-location{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-card-metrics{border-top-color:#1f3547}
+:root[data-theme=dark] .occ-card-metrics>span{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-card-metrics strong{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-capacity-note{color:#fdaf86}
+:root[data-theme=dark] .occ-empty{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-empty>svg{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-empty h3{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-state{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-back-list{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-property-intro{border-top-color:#ed641a}
+:root[data-theme=dark] .occ-room-card{background-color:#101e2b;border-color:#233b4e}
+:root[data-theme=dark] .occ-room-icon{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-room-status{color:#a5b7c5}
+:root[data-theme=dark] .occ-vacancy{background-color:#182c1d;color:#9dd3ac}
+:root[data-theme=dark] .occ-vacancy-full{background-color:#152838;color:#92a7b8}
+:root[data-theme=dark] .occ-capacity-track{background-color:#152737}
+:root[data-theme=dark] .occ-capacity-track>span{background:var(--orange,#ed641a)}
+:root[data-theme=dark] .occ-residents>li{border-bottom-color:#1f3547}
+:root[data-theme=dark] .occ-slot{color:#fdaf86;background-color:#36210e}
+:root[data-theme=dark] .occ-person>strong{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-person>span{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-stay-meta{color:#92a7b8}
+:root[data-theme=dark] .occ-checkout{color:#a3b6c4}
+:root[data-theme=dark] .occ-checkout:hover{color:#ffae78}
+:root[data-theme=dark] .occ-room-empty{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-history summary{color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .occ-history summary>svg{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-history summary::after{color:#92a7b8}
+:root[data-theme=dark] .occ-history li{border-top-color:#1f3547}
+:root[data-theme=dark] .occ-history li span,:root[data-theme=dark] .occ-history li p,:root[data-theme=dark] .occ-history li small{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-history li small{color:#fdaf86}
+:root[data-theme=dark] .occ-history-empty{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-info{background-color:#35220d;border-color:#60482d;color:#ebb98f}
+:root[data-theme=dark] .occ-notice{background-color:#182c1d;border-color:#385541;color:#9bd4ad}
+:root[data-theme=dark] .occ-error{background-color:#142534;border-color:#6a4133;color:#fcae99}
+:root[data-theme=dark] .occ-editor{border-color:#233b4f;color:var(--ink,#e9f0f5);background-color:#101e2b}
+:root[data-theme=dark] .occ-editor::backdrop{background-color:#1a2e3fb3}
+:root[data-theme=dark] .occ-form-fields .field>small{color:var(--muted,#92a7b8)}
+:root[data-theme=dark] .occ-final-check{border-top-color:#1f3547}
+:root[data-theme=dark] .occ-form-context{background-color:#36210e}
+:root[data-theme=dark] .occ-form-context>svg{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-form-context span{color:#d2b8a2}
+:root[data-theme=dark] .occ-selected-person{background-color:#142434}
+:root[data-theme=dark] .occ-selected-person span{color:#92a7b8}
+:root[data-theme=dark] .occ-inline-link{color:#ffae78}
+:root[data-theme=dark] .occ-form-actions{border-top-color:#22394c}
+:root[data-theme=dark] .occ-guest-form{border-color:#253e52;background:var(--background,#101e2b)}
+:root[data-theme=dark] .occ-guest-form small{color:#b8c7d3}
+:root[data-theme=dark] .occ-import-house{border-bottom-color:#253e52}
+:root[data-theme=dark] .occ-import-room{background-color:#142434}
+:root[data-theme=dark] .occ-import-guest{border-top-color:#253e52}
+:root[data-theme=dark] .occ-import-guest small{color:#c6d2dc}
+:root[data-theme=dark] .occ-import-review{background-color:#35220d;border-color:#703f10}
+:root[data-theme=dark] .occ-full-note{background-color:#372100;color:#f7b382}
+:root[data-theme=dark] .occ-overdue{color:#fcad9b}
+:root[data-theme=dark] .occ-report>summary>svg{color:var(--orange,#ff8a3d)}
+:root[data-theme=dark] .occ-report-totals>div{background-color:#142534}
+:root[data-theme=dark] .occ-report-totals strong{color:#e9f0f5}
+:root[data-theme=dark] .occ-report-totals span{color:#afbfcc}
+:root[data-theme=dark] .occ-report-table th,:root[data-theme=dark] .occ-report-table td{border-bottom-color:#21394b}
+:root[data-theme=dark] .occ-report-table tbody th span{color:#95aaba}
+:root[data-theme=dark] .occ-report-table thead,:root[data-theme=dark] .occ-report-table tfoot{background-color:#142535}
+}

@@ -1,0 +1,6 @@
+/* Generated from property-address-filter.css by scripts/build-dark-theme.mjs. Do not edit: change property-address-filter.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .property-address-filter{background-color:#142535;border-color:#22394c}
+:root[data-theme=dark] .property-address-filter .address-filter-selection{color:var(--ink,#eaf0f5)}
+}

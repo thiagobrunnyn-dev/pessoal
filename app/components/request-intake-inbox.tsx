@@ -4,6 +4,7 @@ import {INTAKE_KINDS,INTAKE_STATUSES,type IntakeKind,type IntakeValues} from '..
 import {guestDate,guestJson} from './guest-channel-types';
 import {serviceRequest} from './service-http';
 import './guest-requests.css';
+import './guest-requests.dark.css';
 type Summary={id:string;kind:IntakeKind;protocol:string;status:string;received_at:string;name:string;location:string;address:string;responsible_name:string;assigned:boolean};
 type Detail={request:{id:string;kind:IntakeKind;protocol:string;status:string;received_at:string;revision:number;values:IntakeValues;property_id:string|null;property_name:string|null;client_id:string|null;cost_center_id:string|null;state_code:string|null;assigned_at:string|null;responsible_name:string;responsible_user_id:string|null;linked_order_id:string|null;can_triage:boolean;can_assign:boolean;scope_changed:boolean};files:{id:string;position:number}[];events:{id:string;action:string;note:string;actor_name:string;created_at:string}[];orders:{id:string;description:string}[];catalogs:null|{properties:{id:string;name:string;control_number:number;state_code:string;worksite_id:string|null}[];clients:{id:string;name:string}[];cost_centers:{id:string;name:string;client_id:string}[];responsibles:{id:string;name:string}[]}};
 const statusName=(value:string)=>INTAKE_STATUSES[value as keyof typeof INTAKE_STATUSES]||value;

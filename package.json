@@ -13,6 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",
+    "theme:dark": "node scripts/build-dark-theme.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

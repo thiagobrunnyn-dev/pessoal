@@ -2,6 +2,7 @@ import {ArrowLeft, Building2, FolderOpen, UsersRound, House, Car} from 'lucide-r
 import {requireOperator} from '../../lib/app-access';
 import {isRegionalRequest} from '../../lib/regional-access';
 import './cadastros.css';
+import './cadastros.dark.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {title: 'Cadastros'};

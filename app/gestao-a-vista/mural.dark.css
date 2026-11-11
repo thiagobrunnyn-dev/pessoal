@@ -1,0 +1,15 @@
+/* Generated from mural.css by scripts/build-dark-theme.mjs. Do not edit: change mural.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .mural-header-actions .admin-menu nav button{background-color:#101e2b;color:#e9f0f5}
+:root[data-theme=dark] .mural-card{border-color:#22394c;background-color:#101e2b}
+:root[data-theme=dark] .mural-card-title>svg{color:#ffae78}
+:root[data-theme=dark] .mural-card-title p,:root[data-theme=dark] .mural-meta{color:#92a7b8}
+:root[data-theme=dark] .mural-file{border-color:#335067;background-color:#132433}
+:root[data-theme=dark] .mural-file small{color:#92a7b8}
+:root[data-theme=dark] .mural-context{color:#92a7b8}
+:root[data-theme=dark] .mural-version{border-top-color:#22394c}
+:root[data-theme=dark] .mural-version p,:root[data-theme=dark] .mural-version small{color:#92a7b8}
+:root[data-theme=dark] .mural-history details{border-top-color:#22394c}
+:root[data-theme=dark] .mural-history details p{color:#92a7b8}
+}

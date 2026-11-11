@@ -1,44 +1,22 @@
 /*
- * Look of the overview dashboard (app/hub.tsx). Loaded after hub.css.
+ * Look of the dashboard frame (sidebar, header) and of the overview screen. Loaded after hub.css.
  * hub.css keeps the layout; this file owns colour, depth and the chart marks.
- * Two looks share one set of tokens: dark is the default, light is opt-in
- * through the header toggle (data-theme on .hub-workspace).
+ * The tokens of the two looks live in app/theme.css; data-theme sits on <html>.
  */
 
-/* ---------- Tokens ---------- */
-.hub-workspace{
- color-scheme:light;
- --hub-bg:#f2f5f8;--hub-surface:#ffffff;--hub-surface-2:#f6f9fb;--hub-line:#d9e2e8;--hub-line-soft:#ebf0f3;
- --hub-ink:#1d3443;--hub-muted:#5d7281;--hub-accent:#c84608;--hub-accent-ink:#a8460d;--hub-accent-soft:#fff0e5;--hub-accent-line:#f3c9ac;
- --hub-side:#1d3443;--hub-header:#ffffff;--hub-track:#e9eef2;--hub-shadow:0 1px 2px #1d34430a,0 8px 24px -16px #1d344330;
- --hub-card:var(--hub-surface);--hub-glow:none;--hub-live:#1a8f5c;
- /* Chart series: fixed order, checked for colour-blind separation on each surface. */
- --series-orders:#eb6834;--series-air:#2a78d6;--series-cleaning:#1baf7a;--series-available:#c5d3dc;
- --tone-good:#1f8a5f;--tone-info:#2a78d6;--tone-warn:#b8730f;--tone-neutral:#7b8a95;
- --alert-bg:#fff7eb;--alert-line:#eed9b8;--alert-ink:#704609;--late-bg:#fff1ee;--late-line:#eecac0;--late-ink:#923321;
- background:var(--hub-bg);color:var(--hub-ink);
-}
-.hub-workspace[data-theme=dark]{
- color-scheme:dark;
- --hub-bg:#08121a;--hub-surface:#101e2b;--hub-surface-2:#152737;--hub-line:#223a4d;--hub-line-soft:#1a2e3e;
- --hub-ink:#e9f0f5;--hub-muted:#94a9b9;--hub-accent:#ff8a3d;--hub-accent-ink:#ffae78;--hub-accent-soft:#ff8a3d1c;--hub-accent-line:#ff8a3d55;
- --hub-side:#0b1722;--hub-header:#0b1722;--hub-track:#1b3042;--hub-shadow:0 1px 0 #ffffff08 inset,0 18px 40px -28px #000000;
- --hub-card:linear-gradient(180deg,#13232f 0%,#0f1c28 100%);--hub-glow:0 0 0 1px #ff8a3d2e,0 0 22px #ff8a3d24;--hub-live:#35d39a;
- --series-orders:#d95926;--series-air:#3987e5;--series-cleaning:#199e70;--series-available:#2c475c;
- --tone-good:#22a877;--tone-info:#3987e5;--tone-warn:#d9952b;--tone-neutral:#6f8494;
- --alert-bg:#3a2a0f;--alert-line:#6b4c17;--alert-ink:#ffd591;--late-bg:#3b1a17;--late-line:#74322b;--late-ink:#ffb4a6;
- /* Shared classes from globals.css read these, so they follow the dark look inside the dashboard. */
- --ink:var(--hub-ink);--muted:var(--hub-muted);--line:var(--hub-line);--orange-dark:var(--hub-accent-ink);
- background:
+/* ---------- Page ---------- */
+.hub-workspace{background:var(--hub-bg);color:var(--hub-ink)}
+:root[data-theme=dark] .hub-workspace{background:
   radial-gradient(900px 520px at 88% -8%,#ff7a2f1a,transparent 62%),
   radial-gradient(760px 520px at 22% -4%,#3987e51c,transparent 60%),
-  var(--hub-bg);
-}
+  var(--hub-bg)}
 
 /* ---------- Shell ---------- */
 .hub-workspace .hub-sidebar{background:var(--hub-side);border-right:1px solid transparent}
-.hub-workspace[data-theme=dark] .hub-sidebar{border-right-color:var(--hub-line-soft)}
+:root[data-theme=dark] .hub-workspace .hub-sidebar{border-right-color:var(--hub-line-soft)}
 .hub-workspace .hub-navigation-links .hub-nav-current{background:linear-gradient(90deg,#d6500d,#c84608);border-color:#d6500d;box-shadow:0 6px 18px -10px #ff7a2f}
+/* A current sub-entry keeps white text on the orange marker. */
+.hub-workspace .hub-navigation-links a.hub-nav-secondary.hub-nav-current{color:#fff;font-weight:600}
 .hub-workspace .hub-compact-header{background:var(--hub-header);border-bottom-color:var(--hub-line)}
 .hub-workspace .hub-header-label{color:var(--hub-muted)}
 .hub-workspace .hub-mobile-brand{color:var(--hub-ink)}
@@ -49,9 +27,6 @@
 .hub-workspace .admin-menu>nav{background:var(--hub-surface);border-color:var(--hub-line);color:var(--hub-ink);box-shadow:0 18px 40px -18px #000000a0}
 .hub-workspace .admin-menu>nav>a:hover{background:var(--hub-surface-2)}
 
-.hub-theme-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 13px;border:1px solid var(--hub-line);border-radius:999px;background:var(--hub-surface-2);color:var(--hub-ink);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
-.hub-theme-toggle:hover{border-color:var(--hub-accent-line)}
-.hub-theme-toggle svg{color:var(--hub-accent);flex-shrink:0}
 
 /* ---------- Intro ---------- */
 .hub-workspace .hub-intro h1{color:var(--hub-ink);letter-spacing:-.03em}
@@ -72,13 +47,13 @@
 .hub-workspace .button:disabled{opacity:.6;cursor:default}
 .hub-workspace .hub-intro-actions>.button:not(.secondary){background:linear-gradient(180deg,#dc5410,#c84608);border-color:#c84608;box-shadow:0 10px 22px -14px #ff7a2f}
 .hub-workspace .hub-intro-actions>.button:not(.secondary):hover{background:#ae3b05;border-color:#ae3b05}
-.hub-workspace[data-theme=dark] input:not([type=checkbox]):not([type=file]),.hub-workspace[data-theme=dark] select{background:var(--hub-surface-2);border-color:var(--hub-line);color:var(--hub-ink)}
-.hub-workspace[data-theme=dark] select:disabled,.hub-workspace[data-theme=dark] input:disabled{opacity:.6}
-.hub-workspace[data-theme=dark] .error{background:var(--late-bg);border-color:var(--late-line);color:var(--late-ink)}
-.hub-workspace[data-theme=dark] .pill.neutral{background:#213649;color:#b9cad6}
-.hub-workspace[data-theme=dark] .pill.danger{background:#4a1f22;color:#ffb3b8}
-.hub-workspace[data-theme=dark] .pill.ok{background:#173a2b;color:#8fe0b8}
-.hub-workspace[data-theme=dark] .pill.warning{background:#43300f;color:#ffd08a}
+:root[data-theme=dark] .hub-workspace input:not([type=checkbox]):not([type=file]),:root[data-theme=dark] .hub-workspace select{background:var(--hub-surface-2);border-color:var(--hub-line);color:var(--hub-ink)}
+:root[data-theme=dark] .hub-workspace select:disabled,:root[data-theme=dark] .hub-workspace input:disabled{opacity:.6}
+:root[data-theme=dark] .hub-workspace .error{background:var(--late-bg);border-color:var(--late-line);color:var(--late-ink)}
+:root[data-theme=dark] .hub-workspace .pill.neutral{background:#213649;color:#b9cad6}
+:root[data-theme=dark] .hub-workspace .pill.danger{background:#4a1f22;color:#ffb3b8}
+:root[data-theme=dark] .hub-workspace .pill.ok{background:#173a2b;color:#8fe0b8}
+:root[data-theme=dark] .hub-workspace .pill.warning{background:#43300f;color:#ffd08a}
 .hub-workspace .text-button{color:var(--hub-accent-ink)}
 
 /* ---------- Surfaces ---------- */
@@ -178,7 +153,6 @@
 
 /* ---------- Small screens, motion, print ---------- */
 @media(max-width:760px){
- .hub-theme-toggle{padding:9px 11px}.hub-theme-toggle>span{display:none}
  .hub-workspace .hub-intro-actions{grid-template-columns:minmax(0,1fr) auto}
  .hub-live{grid-column:1/-1;justify-self:start}
  .hub-workspace .hub-operational-overview .hub-overview-card>strong,.hub-workspace .hub-pending-card summary>strong{font-size:28px}
@@ -187,6 +161,6 @@
 @media(max-width:520px){.hub-service-summary{grid-template-columns:minmax(0,1fr);justify-items:center}.hub-service-split{width:100%}}
 @media(prefers-reduced-motion:reduce){.hub-workspace *,.hub-workspace *::before{animation:none!important;transition:none!important}}
 @media print{
- .hub-workspace,.hub-workspace[data-theme=dark]{color-scheme:light;--hub-bg:#fff;--hub-surface:#fff;--hub-surface-2:#fff;--hub-card:#fff;--hub-line:#cfd8de;--hub-line-soft:#e3e9ed;--hub-ink:#1d3443;--hub-muted:#4f6472;--hub-track:#e9eef2;--hub-shadow:none;--hub-glow:none;--ink:#1d3443;--muted:#4f6472;--line:#cfd8de;background:#fff}
- .hub-theme-toggle,.hub-live{display:none}
+ .hub-workspace,:root[data-theme=dark] .hub-workspace{background:#fff}
+ .hub-live{display:none}
 }

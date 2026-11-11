@@ -7,6 +7,7 @@ import {Archive, ArrowLeft, CarFront, History, Pencil, Plus, RefreshCw, RotateCc
 import {BRAZIL_STATES} from '../../lib/brazil-states';
 import type {Vehicle, VehicleAction, VehicleEvent, VehicleSnapshot} from '../../lib/vehicles';
 import './vehicles-directory.css';
+import './vehicles-directory.dark.css';
 
 type DirectoryData = {vehicles: Vehicle[]; regional: boolean; page: number; has_more: boolean};
 type Entry = {action: VehicleAction; vehicle?: Vehicle};

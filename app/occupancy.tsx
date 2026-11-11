@@ -7,6 +7,7 @@ import {occupancyCapacityStatus} from '../lib/occupancy';
 import type {OccupancyDetail, OccupancyMetrics, OccupancyPropertySummary, OccupancyStay} from '../lib/occupancy';
 import {makeOccupancyDraft, occupancyDate, occupancyDraftIssue, occupancyError, occupancyPayload, occupancyPropertyUrl, occupancySlots, occupancyText, occupancyTotals, type OccupancyDraft, type OccupancyEntry} from './occupancy-model';
 import './occupancy.css';
+import './occupancy.dark.css';
 import dynamic from 'next/dynamic';
 const OccupancyImport=dynamic(()=>import('./components/occupancy-import'));
 import LodgingReportPanel from './components/lodging-report';

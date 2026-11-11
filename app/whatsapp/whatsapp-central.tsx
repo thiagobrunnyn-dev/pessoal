@@ -9,6 +9,7 @@ import {
   type RequestStatus, type WhatsappChat, type WhatsappMessage, type WhatsappOutboxItem, type WhatsappRequest, type WhatsappSummary,
 } from '../../lib/whatsapp';
 import './whatsapp.css';
+import './whatsapp.dark.css';
 
 type Totals = {monitored_chats: number; messages_today: number; open_requests: number; urgent_requests: number; queued_outbox: number; failed_outbox: number; pending_analysis: number; last_capture_at: string | null};
 type Overview = {chats: WhatsappChat[]; chats_limited: boolean; totals: Totals; summaries: WhatsappSummary[]; properties: {id: string; name: string}[]; can_manage: boolean; retention_days: number; today: string};

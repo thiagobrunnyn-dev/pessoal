@@ -1,0 +1,6 @@
+/* Generated from property-create-photo.css by scripts/build-dark-theme.mjs. Do not edit: change property-create-photo.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .property-create-photo .field input[type=file]::file-selector-button{border-color:#2f4c62;background-color:#101e2b;color:#e9f0f5}
+:root[data-theme=dark] .property-create-photo img{background-color:#101e2b}
+}

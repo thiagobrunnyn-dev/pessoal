@@ -9,6 +9,7 @@ import PhotoFileControls from '../components/photo-file-controls';
 import {prepareMobilizationPhoto} from '../mobilization-form';
 import {serviceRequest} from '../components/service-http';
 import './services.css';
+import './services.dark.css';
 type Row=Record<string,any>;
 const when=(value?:string)=>value?new Date(value+'T12:00:00').toLocaleDateString('pt-BR'):'Não informado';
 const title=(kind:string)=>PROPERTY_SERVICES[kind as keyof typeof PROPERTY_SERVICES]||kind;

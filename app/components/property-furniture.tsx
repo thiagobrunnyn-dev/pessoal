@@ -9,6 +9,7 @@ import FurnitureStructureDialog from './property-furniture-editor';
 import {assertFurnitureSaved, furnitureEndpoint, furnitureMessage as message, readFurniture as get, type Furniture, type FurnitureItem, type FurnitureResponse, type FurnitureSource} from './property-furniture-types';
 import {prepareMobilizationPhoto} from '../mobilization-form';
 import './property-furniture.css';
+import './property-furniture.dark.css';
 
 type ItemPhoto = {id: string; event_id: string; position: number; uploaded_at: string; equipment_item_id: string | null; equipment_item_snapshot: {id: string; label: string; environment_id: string | null; environment_label: string | null; planned: number | null; checked: number | null; condition?: string; specification?:string;applicability?:string;version: number} | null};
 type PhotoResponse = {property_id: string; mobilization_id?: string; furniture_id?: string; item_id: string; photos: ItemPhoto[]};

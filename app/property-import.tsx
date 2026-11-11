@@ -5,6 +5,7 @@
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import {propertyNumber} from '../lib/property-number';
 import './property-import.css';
+import './property-import.dark.css';
 
 const MAX_BYTES = 256 * 1024;
 const MAX_ROWS = 100;

@@ -12,6 +12,12 @@ A versão do Sites usa Vinext e os bindings Cloudflare D1 `DB` e R2 `BUCKET`. O 
 
 As páginas só podem ser exibidas em iframe pelo próprio site. Para liberar outro endereço, como a pré-visualização embutida do editor de hospedagem, defina `MOBILIZA_FRAME_ANCESTORS` no ambiente do servidor com as origens confiáveis separadas por espaço (por exemplo `https://editor.example.com`). Só são aceitas origens `https://`, com `*.` opcional no início do domínio; qualquer outro valor é ignorado e o bloqueio padrão continua valendo.
 
+## Visual
+
+O sistema tem dois visuais, escuro (padrão) e claro. A escolha fica no cookie `mobiliza_hub_theme` e é aplicada no `<html data-theme>` pelo `app/layout.tsx`; o botão de visual alterna entre os dois. As telas internas ficam dentro da estrutura do dashboard (menu lateral e cabeçalho) por um `layout.tsx` em cada pasta de rota, que reexporta `app/components/frame-layout.tsx`. A página inicial institucional mantém a paleta própria.
+
+As folhas `*.dark.css` são geradas a partir das folhas claras por `scripts/build-dark-theme.mjs`: depois de alterar cores em um `.css`, rode `npm run theme:dark`. O teste `tests/app-theme.cjs` falha se alguma estiver desatualizada. Ajustes manuais do tema e os tokens ficam em `app/theme.css`.
+
 ## Acesso da equipe
 
 Para configurar o login próprio, defina no ambiente do servidor `MOBILIZA_SUPABASE_AUTH=1`, `MOBILIZA_SUPABASE_URL`, `MOBILIZA_SUPABASE_PUBLISHABLE_KEY` e `MOBILIZA_SUPABASE_OWNER_ID` com o UID do primeiro administrador no Supabase. O identificador do proprietário da aplicação em `lib/owner-access.ts` deve corresponder ao ambiente em uso. A variável opcional `MOBILIZA_SUPABASE_MEMBERS` vincula UIDs do Supabase a contas legadas.

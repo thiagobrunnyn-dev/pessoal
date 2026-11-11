@@ -1,0 +1,34 @@
+/* Generated from guest-channel.css by scripts/build-dark-theme.mjs. Do not edit: change guest-channel.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .guest-channel{background:var(--bg,#142635);color:var(--ink,#e9f0f5)}
+:root[data-theme=dark] .guest-brand{border-top-color:#ed641a;border-bottom-color:#22394c;background-color:#101e2b}
+:root[data-theme=dark] .guest-brand>div{border-left-color:#22394c}
+:root[data-theme=dark] .guest-brand span{color:#b3c3cf}
+:root[data-theme=dark] .guest-property{border-color:#243d51;border-left-color:#ed641a;background-color:#101e2b}
+:root[data-theme=dark] .guest-property>svg{color:var(--orange-dark,#ffae78)}
+:root[data-theme=dark] .guest-property p{color:#b3c3cf}
+:root[data-theme=dark] .guest-intro p{color:#b3c3cf}
+:root[data-theme=dark] .guest-urgency{background-color:#362108;border-color:#6a431b;color:#ecb795}
+:root[data-theme=dark] .guest-kind label{border-color:#38576f;background-color:#132433}
+:root[data-theme=dark] .guest-kind label.selected{background-color:#391f0b;border-color:#c84608;color:#fead92}
+:root[data-theme=dark] .guest-section{border-top-color:#22394c}
+:root[data-theme=dark] .guest-help{color:#b3c3cf}
+:root[data-theme=dark] .guest-form input:not([type=radio]):not([type=checkbox]):not([type=file]),:root[data-theme=dark] .guest-form textarea,:root[data-theme=dark] .guest-form select{border-color:#38576f;color:var(--ink,#e9f0f5);background-color:#101e2b}
+:root[data-theme=dark] .guest-form b{color:#fea388}
+:root[data-theme=dark] .guest-photo>img{border-color:#22394c}
+:root[data-theme=dark] .guest-privacy{border-color:#243d51;background-color:#142535}
+:root[data-theme=dark] .guest-privacy>svg{color:#b5c5d1}
+:root[data-theme=dark] .guest-privacy p{color:#c9d5de}
+:root[data-theme=dark] .guest-error{background-color:#391e1b;color:#fdaca0;border-color:#855d57}
+:root[data-theme=dark] .guest-footer{color:#b3c3cf}
+:root[data-theme=dark] .guest-item{border-color:#243d51;background-color:#132332}
+:root[data-theme=dark] .guest-scores>fieldset{border-bottom-color:#22394c}
+:root[data-theme=dark] .guest-score-options>label{border-color:#38576f;background-color:#101e2b}
+:root[data-theme=dark] .guest-score-options>label.selected{background-color:#391f0b;border-color:#c84608;color:#fead92}
+:root[data-theme=dark] .guest-receipt>svg{color:#8acfac}
+:root[data-theme=dark] .guest-receipt dl{background-color:#142534;border-color:#243d51}
+:root[data-theme=dark] .guest-receipt dt{color:#b3c3cf}
+:root[data-theme=dark] .guest-alternatives{border-bottom-color:#22394c}
+:root[data-theme=dark] .guest-alternatives>summary,:root[data-theme=dark] .guest-optional>summary{color:#c9d5de}
+}

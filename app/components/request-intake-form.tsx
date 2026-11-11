@@ -6,6 +6,7 @@ import {guestDate,guestJson,GuestApiError,isGuestReceipt,type GuestReceipt} from
 import PhotoFileControls from './photo-file-controls';
 import {prepareMobilizationPhoto} from '../mobilization-form';
 import './guest-channel.css';
+import './guest-channel.dark.css';
 type Draft=Omit<IntakeValues,'items'|'privacy_accepted'|'privacy_version'>&{items:{name:string;quantity:string;unit:string}[];privacy_accepted:boolean};
 type Pending={id:string;values:IntakeValues;files:File[]};
 const fresh=():Draft=>({name:'',job_title:'',company:'',location:'',address:'',contact:'',description:'',cost_center:'',needed_on:'',items:[{name:'',quantity:'',unit:''}],privacy_accepted:false});

@@ -1,0 +1,5 @@
+/* Generated from vehicles-directory.css by scripts/build-dark-theme.mjs. Do not edit: change vehicles-directory.css or the
+   generator and run `npm run theme:dark`. Screen only, so printed pages stay light. */
+@media screen{
+:root[data-theme=dark] .vehicle-history-event{border-top-color:#22394c}
+}

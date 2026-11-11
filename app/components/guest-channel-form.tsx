@@ -11,6 +11,7 @@ import {
   type GuestScores, type GuestValues,
 } from './guest-channel-types';
 import './guest-channel.css';
+import './guest-channel.dark.css';
 
 type Draft = {
   kind: GuestRequestKind; category: GuestMaintenanceCategory | ''; requester_type: string; name: string; job_title: string; location: string; description: string;

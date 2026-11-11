@@ -14,6 +14,7 @@ import {ArrowLeft, Plus, RefreshCw, Users, X} from 'lucide-react';
 import {BRAZIL_STATES} from '../../lib/brazil-states';
 import {prepareProfilePhoto} from './profile-photo';
 import './people-directory.css';
+import './people-directory.dark.css';
 import PeopleViewMenu, {type PeopleView} from './people-view-menu';
 import PeopleCardMenu from './people-card-menu';
 import PersonPrivateFields, {type PrivatePersonFields} from './person-private-fields';

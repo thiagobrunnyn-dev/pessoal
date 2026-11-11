@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {ArrowLeft,Plus,FileText,Pencil,Archive,RotateCcw,Upload,History,X,Download,Printer,MoreHorizontal,RefreshCw} from 'lucide-react';
 import './mural.css';
+import './mural.dark.css';
 type Row=Record<string,any>;
 type Entry={action:'create'|'replace'|'update'|'archive'|'restore';document?:Row};
 const EVENT_LABELS:Record<string,string>={create:'Inclusão',replace:'Nova versão',update:'Dados atualizados',archive:'Arquivado',restore:'Restaurado'};
