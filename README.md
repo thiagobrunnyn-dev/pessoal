@@ -4,6 +4,8 @@ O Mobiliza reúne imóveis e ocupação, solicitações de manutenção e compra
 
 Esta cópia reúne o código da aplicação, o esquema e as migrações D1, os testes e quatro modelos de automação do n8n. Identidades, credenciais e registros operacionais são configurados e mantidos no ambiente de cada instalação.
 
+O [Controle de uniformes](apps/uniformes/README.md) fica em `apps/uniformes/`, com instalação, testes e build próprios. A pasta reúne a versão 7 do piloto, com a configuração de implantação substituída por exemplos.
+
 ## Desenvolvimento
 
 Use Node.js 24 e npm. Execute `npm ci` e `npm run dev` para abrir a prévia, ou `npm run build` para gerar a aplicação.

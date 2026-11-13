@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791061914806,
+      "tag": "0000_skinny_midnight",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791065109120,
+      "tag": "0001_flat_vulture",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791251098142,
+      "tag": "0002_charming_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791251495497,
+      "tag": "0003_productive_human_cannonball",
+      "breakpoints": true
+    }
+  ]
+}
