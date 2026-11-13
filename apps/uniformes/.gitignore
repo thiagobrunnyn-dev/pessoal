@@ -1,0 +1,14 @@
+node_modules/
+.sites-runtime/
+.wrangler/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+.env
+.env.*
+!.env.example
+.dev.vars*
+dist/
+public/vendor.js
+src/assets.js

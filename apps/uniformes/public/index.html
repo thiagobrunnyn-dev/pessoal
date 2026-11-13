@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MBL Facilities | Controle de uniformes</title>
+  <meta name="description" content="Piloto privado de controle compartilhado de uniformes da MBL Facilities.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c303c'/%3E%3Cpath d='M9 8h10l5 8-10 10-8-8V8z' fill='%234ee0b6'/%3E%3Ccircle cx='11' cy='12' r='2' fill='%230c303c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="/management.css"><script src="/theme.js"></script><script src="vendor.js" defer></script><script src="app.js" defer></script>
+</head>
+<body class="management">
+  <div class="demo-strip"><span id="environment-label">Acesso privado · Registros da operação</span><span>Mobiliza Gestão · Lavanderia</span></div>
+  <header class="topbar"><a class="brand" href="#conferencia" aria-label="MBL Facilities, controle de uniformes"><img class="company-logo" src="mbl-logo.jpeg" alt="MBL Facilities — Gestão em hospedagem e lavanderia"><span class="brand-note">Mobiliza Gestão</span></a><div class="top-actions"><label class="mode-label">Ambiente<select id="mode"><option value="live">Registros da operação</option><option value="demo">Teste fictício</option></select></label><button type="button" class="button quiet" id="theme-toggle">Visual claro</button><button class="button quiet" id="help-button">Ajuda</button></div></header>
+  <div class="management-shell">
+    <nav class="area-nav" aria-label="Áreas do controle">
+      <button type="button" data-view="conferencia" class="active" aria-current="page">Conferência</button>
+      <button type="button" data-view="cadastros">Cadastros</button>
+      <button type="button" data-view="cadastro">Peças e etiquetas</button>
+      <button type="button" data-view="relatorio">Entradas do dia</button>
+      <button type="button" data-view="rotas">Lotes e rotas</button>
+      <a href="/viagens">Saídas e chegadas</a>
+    </nav>
+  <main>
+    <div class="page-heading"><div><h1>Controle de uniformes</h1><p>Acompanhe a coleta, a lavagem e a devolução por peça.</p></div><button class="button primary" id="new-rol">+ Novo rol</button></div>
+    <div class="sync-bar"><span id="save-status">Conectando ao banco compartilhado…</span><button class="text-button" id="refresh">Atualizar agora</button></div><div id="global-feedback" role="status" aria-live="polite"></div>
+    <section id="view-conferencia" aria-label="Conferência">
+      <div id="summary" class="summary"></div>
+      <div class="workspace">
+        <aside class="rol-panel panel"><div class="panel-head"><div><p class="eyebrow">COLETAS</p><h2>Selecione um rol</h2></div><span id="rol-count" class="pill neutral"></span></div>
+          <div class="filter-fields"><label>Cidade<select id="city-filter"><option value="">Todas as cidades</option><option>Canaã dos Carajás</option><option>Curianópolis</option></select></label><label>Ordenar<select id="sort-filter"><option value="due">Prazo de retorno</option><option value="name">Nome</option><option value="id">Número do rol</option></select></label></div>
+          <div id="rol-list" class="rol-list"></div>
+        </aside>
+        <div class="work-column"><section class="panel work-panel"><div id="selected-heading"></div>
+          <div class="step-tabs" role="tablist" aria-label="Etapa da conferência"><button role="tab" data-step="entry" class="active" aria-selected="true"><b>1</b> Entrada</button><button role="tab" data-step="process" aria-selected="false"><b>2</b> Preparo</button><button role="tab" data-step="exit" aria-selected="false"><b>3</b> Saída</button></div>
+          <div id="stage-content"></div>
+          <div id="feedback" class="feedback hidden" role="status" aria-live="polite"></div>
+          <div id="piece-progress"></div>
+        </section>
+        <section class="panel activity-panel"><div class="panel-head compact"><h2>Últimas movimentações</h2><span class="muted">Deste rol</span></div><div id="activity"></div></section>
+        </div>
+      </div>
+    </section>
+    <section id="view-cadastro" class="hidden" aria-label="Peças cadastradas"><div class="section-intro"><div><h2>A identificação fica com a peça</h2><p>Camisa e calça têm códigos diferentes, mesmo quando são da mesma pessoa.</p></div><button class="button primary" id="new-piece">+ Cadastrar peça</button></div><div class="info-box"><strong>Antes de usar na operação</strong><p>A etiqueta permanente e sua fixação precisam resistir ao processo industrial e ser validadas com a lavanderia. O QR contém somente o código da peça. A impressão nesta tela é para testar a leitura, sem formato de etiqueta industrial definido.</p></div><label class="search-label">Buscar código, nome ou matrícula<input id="piece-search" type="search" placeholder="Ex.: DEMO-001 ou Pessoa 01"></label><div id="registry" class="registry"></div></section>
+    <section id="view-rotas" class="hidden" aria-label="Lotes e rotas"><div class="section-intro"><div><h2>Sujo entra. Limpo volta.</h2><p>Peças separadas por cidade e sentido da viagem.</p></div></div><div id="routes" class="routes"></div><div class="info-box"><strong>Programação a confirmar</strong><p>Paradas, dias, horários e capacidade dos veículos ainda não estão definidos. Esta tela não calcula trajetos, distâncias ou rotas otimizadas.</p></div></section>
+    <section id="view-cadastros" class="hidden"><div class="section-intro"><div><h2>Cadastros da lavanderia</h2><p>Comece pela empresa, depois destino e colaborador.</p></div></div><div class="registration-actions"><button class="button primary" id="new-company">+ Empresa</button><button class="button" id="new-destination">+ Destino</button><button class="button" id="new-person">+ Colaborador</button></div><div id="registration-list"></div></section>
+    <section id="view-relatorio" class="hidden"><div class="section-intro"><div><h2>Uniformes recebidos para lavagem</h2><p>Conta as peças que entraram de fato, por empresa e colaborador.</p></div><button class="button" id="report-export">Exportar relatório CSV</button></div><div class="report-filters"><label>Empresa<select id="report-company"><option value="">Todas as empresas</option></select></label><label>Data de entrada<input type="date" id="report-date"></label></div><p class="muted">Dia operacional: horário de Belém (UTC−3). Não confunde entrada para lavagem com entrega de roupa limpa.</p><div id="report-results"></div></section>
+    <footer><div><p><strong>Piloto privado.</strong> A câmera e as etiquetas precisam ser testadas no aparelho usado pela equipe. Sem internet, nenhuma entrada é confirmada. Acesso atual somente do proprietário.</p></div><div><button class="text-button" id="export">Exportar conferências CSV</button><button class="text-button" id="backup">Baixar cópia completa</button></div></footer>
+  </main>
+  </div>
+  <dialog id="modal"><div class="modal-head"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="Fechar">×</button></div><div id="modal-body"></div></dialog>
+</body>
+</html>
