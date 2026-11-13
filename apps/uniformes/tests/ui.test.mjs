@@ -15,7 +15,12 @@ click('#new-company');fill('name','Empresa interface');await submit('#registrati
 click('#new-destination');fill('lodging','Alojamento fictício');fill('block','B');fill('room','101');await submit('#registration-form');
 click('#new-person');fill('name','Pessoa fictícia');fill('mat','TESTE001');await submit('#registration-form');assert(q('#registration-list').textContent.includes('Pessoa fictícia'));
 click('#new-piece');await submit('#piece-form');q('#close-modal').click();const code=data.live.state.pieces[0].id;assert(q('#registry').textContent.includes(code));
-click('#new-rol');assert.equal(q('[name=triageDate]').value,'');fill('date','2026-10-03');fill('triageDate','2026-10-03');fill('collectionTime','07:00');fill('shirts','1');fill('pants','0');await submit('#rol-form');assert(q('#selected-heading').textContent.includes('Pessoa fictícia'));assert(q('#selected-heading').textContent.includes('06/10/2026, 09:00'));assert(q('#selected-heading').textContent.includes('07:00'));assert(q('#selected-heading').textContent.includes('podendo ocorrer antecipadamente'));
+click('#new-rol');assert.equal(q('[name=triageDate]').value,'');fill('date','2026-10-03');fill('triageDate','2026-10-03');fill('collectionTime','09:01');fill('shirts','1');fill('pants','0');
+await submit('#rol-form');
+assert.match(q('#form-error').textContent,/triagem não pode começar antes da coleta/);
+assert.equal(q('[name=collectionTime]').value,'09:01');
+assert.equal(data.live.state.rols.length,0);
+fill('collectionTime','07:00');await submit('#rol-form');assert(q('#selected-heading').textContent.includes('Pessoa fictícia'));assert(q('#selected-heading').textContent.includes('06/10/2026, 09:00'));assert(q('#selected-heading').textContent.includes('07:00'));assert(q('#selected-heading').textContent.includes('podendo ocorrer antecipadamente'));
 q('#scan-input').value=code;await submit('#scan-form');assert(q('#piece-progress').textContent.includes('Recebida'));
 click('[data-step="process"]');click('#start-wash');await settle();click('#finish-wash');await settle();click('[data-step="exit"]');q('#scan-input').value=code;await submit('#scan-form');click('#dispatch');await settle();assert(q('#selected-heading').textContent.includes('Enviado'));
 q('#report-date').value='2026-10-03';q('#report-date').dispatchEvent(new w.Event('change'));assert(q('#report-results').textContent.includes('Pessoa fictícia'));assert(q('#report-results').textContent.includes('Empresa interface'));

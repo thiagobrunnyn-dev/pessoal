@@ -29,6 +29,22 @@ r=await action({type:'piece',owner,pieceType:'Calça'});const pants=r.data.resul
 ok(/^U-[A-F0-9]{12}$/.test(shirt)&&shirt!==pants,'distinct random codes');
 r=await action({type:'rol',owner,date:'2026-10-03',triageDate:'2026-10-03',collectionTime:'07:00',due:'1900-01-01',dueAt:'1900-01-01T00:00:00Z',shirts:1,pants:1});const rolId=r.data.result.id;
 ok(r.status===200,'create collection');ok(r.data.state.rols[0].dueAt==='2026-10-06T09:00:00-03:00','server calculates deadline ignoring client due');ok(r.data.state.rols[0].collectionTime==='07:00','collection time separate');
+const sameDayRol = {type:'rol', owner, date:'2026-11-13', triageDate:'2026-11-13', shirts:1, pants:0};
+const beforeInvalidSchedule = await req();
+for (const collectionTime of ['09:01', '15:00']) {
+ const rejected = await action({...sameDayRol, collectionTime});
+ assert.equal(rejected.status, 400, `same-day collection at ${collectionTime} must be rejected`);
+ assert.match(rejected.data.error, /triagem não pode começar antes da coleta/);
+}
+const afterInvalidSchedule = await req();
+assert.equal(afterInvalidSchedule.data.version, beforeInvalidSchedule.data.version);
+assert.deepEqual(afterInvalidSchedule.data.state.rols, beforeInvalidSchedule.data.state.rols);
+for (const schedule of [{collectionTime:'09:00'}, {}, {collectionTime:'15:00', triageDate:'2026-11-14'}]) {
+ const created = await action({...sameDayRol, ...schedule});
+ assert.equal(created.status, 200, JSON.stringify(schedule));
+ const saved = created.data.state.rols.find(row => row.id === created.data.result.id);
+ assert.equal(saved.triageStartAt, `${schedule.triageDate ?? sameDayRol.triageDate}T09:00:00-03:00`);
+}
 for(const changes of [{triageDate:''},{triageDate:'2026-10-04'},{triageDate:'2026-02-30'},{collectionTime:'25:00'},{date:'2026-10-04',triageDate:'2026-10-05'},{triageDate:'2026-10-02'}])ok((await action({type:'rol',owner,date:'2026-10-03',triageDate:'2026-10-03',shirts:1,pants:0,...changes})).status===400,'invalid scheduling blocked');
 ok((await action({type:'rol',owner,date:'2026-02-31',triageDate:'2026-10-03',collectionTime:'07:00',due:'1900-01-01',dueAt:'1900-01-01T00:00:00Z',shirts:1,pants:1})).status===400,'invalid date');
 ok((await action({type:'exit',rolId,code:shirt})).status===400,'unreceived exit denied');
