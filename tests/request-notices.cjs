@@ -729,6 +729,54 @@ const GENERAL = '120363000000000010@g.us', GROUP_A = '120363000000000011@g.us', 
     assert.ok((await panel('GET', 'view=chat&id=' + groupA.id)).data.messages.some(message => message.sender_name === 'Aviso de solicitação' && message.body === followed.body));
   });
 
+  await test('a request sent under the earlier privacy text never produces a notice, not even when closed later', async () => {
+    // The texts in use cover the notices; a future version of a text has to be listed on purpose.
+    assert.equal(model.noticesDisclosed('intake', {privacy_version: intakeModel.INTAKE_PRIVACY_VERSION}), true);
+    assert.equal(model.noticesDisclosed('guest', {privacy_version: guestModel.GUEST_PRIVACY_VERSION}), true);
+    for (const [source, version] of [['intake', 'general-requests-v1'], ['guest', 'identified-v1'], ['intake', guestModel.GUEST_PRIVACY_VERSION], ['guest', undefined]]) {
+      assert.equal(model.noticesDisclosed(source, {privacy_version: version}), false);
+    }
+    // A request stored before the notices existed: its form said the content stays with management.
+    // The stored payload even carries a number and the consent, to show the text is what decides.
+    const id = randomUUID(), eventId = randomUUID(), protocol = 'MAN-' + randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+    const received = new Date(Date.now() - 86_400_000).toISOString(), fingerprint = 'a'.repeat(64);
+    const stored = {...intakeValues('maintenance'), whatsapp: NUMBER, whatsapp_consent: true, privacy_version: 'general-requests-v1'};
+    run("INSERT INTO request_intakes(id,owner_id,kind,protocol,values_json,received_at,status,revision,last_event_id,request_id,request_fingerprint) VALUES(?,?,'maintenance',?,?,?,'received',1,?,?,?)",
+      id, OWNER, protocol, JSON.stringify(stored), received, eventId, randomUUID(), fingerprint);
+    run("INSERT INTO request_intake_events(id,owner_id,intake_id,revision,state_code,action,before_status,after_status,note,actor_user_id,actor_name,request_id,request_fingerprint,created_at) VALUES(?,?,?,1,NULL,'received',NULL,'received','',NULL,'Identificação declarada pelo solicitante',?,?,?)",
+      eventId, OWNER, id, 'public:' + id, fingerprint, received);
+    const before = noticeCount(), legacy = {id, protocol};
+    await runtime.requestNotices.queueReceived(OWNER, 'intake', protocol);
+    await intakeManage.triageIntake(ownerOp, intakeAction(legacy, 'close'));
+    assert.equal(get('SELECT status FROM request_intakes WHERE id=?', id).status, 'closed');
+    assert.deepEqual([noticesOf(legacy).length, noticeCount()], [0, before]);
+    // The same close on a request sent under the current text does notify the general group.
+    const current = await intake('maintenance');
+    await intakeManage.triageIntake(ownerOp, intakeAction(current, 'close'));
+    assert.deepEqual(noticesOf(current).map(notice => [notice.event, notice.target, notice.chat_id].join(' ')).sort(), ['closed group ' + general.id, 'received group ' + general.id]);
+  });
+
+  await test('limits hold when two requests arrive at the same moment', async () => {
+    drainQueue();
+    const asker = person(), limit = model.NOTICE_NUMBER_DAILY_LIMIT;
+    // The number already got one notice less than the daily limit allows.
+    for (let sent = 0; sent < limit - 1; sent++) seedNotice({requester_jid: asker.jid});
+    // Two requests saved while the queue was out, then notified together, as two simultaneous posts of the public form would be.
+    const {result: [one, two]} = await withBrokenNotices(async () => [await intake('maintenance', asker.consent), await intake('maintenance', asker.consent)]);
+    assert.equal(noticesOf(one).length + noticesOf(two).length, 0);
+    await Promise.all([one, two].map(row => runtime.requestNotices.queueReceived(OWNER, 'intake', row.protocol)));
+    // Only one of the two fits: the count is made by the statement that inserts, not read beforehand.
+    assert.equal(get("SELECT count(*) n FROM request_notices WHERE target='requester' AND requester_jid=? AND status<>'cancelled'", asker.jid).n, limit);
+    const toRequester = [...noticesOf(one), ...noticesOf(two)].filter(notice => notice.target === 'requester');
+    assert.deepEqual(toRequester.map(notice => notice.status).sort(), ['cancelled', 'queued']);
+    const blocked = toRequester.find(notice => notice.status === 'cancelled');
+    assert.deepEqual([blocked.requester_jid, blocked.body, /limite diário/.test(blocked.error), !!blocked.purged_at], [null, '', true, true]);
+    // Each request still has its own group notice: the number's limit does not touch them.
+    assert.equal([...noticesOf(one), ...noticesOf(two)].filter(notice => notice.target === 'group').length, 2);
+    clearSeeds();
+    drainQueue();
+  });
+
   await test('unconfirmed notices fail after the timeout; late and orphaned notices are never delivered', async () => {
     const row = await intake('maintenance', person().consent);
     const [group, requester] = noticesOf(row);

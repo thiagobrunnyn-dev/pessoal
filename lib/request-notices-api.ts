@@ -7,7 +7,7 @@
 // caller.
 import {GUEST_MAINTENANCE_CATEGORIES, type GuestMaintenanceCategory} from './guest-request-categories';
 import {
-  consentedWhatsapp, maskWhatsapp, noticeBody, noticeKindLabel, redactNumbers, whatsappJid,
+  consentedWhatsapp, maskWhatsapp, noticeBody, noticeKindLabel, noticesDisclosed, redactNumbers, whatsappJid,
   NOTICE_GROUP_HOURLY_LIMIT, NOTICE_MAX_AGE_HOURS, NOTICE_NUMBER_DAILY_LIMIT, NOTICE_QUEUE_LIMIT, NOTICE_REQUESTER_HOURLY_LIMIT, NOTICE_SENDER_NAME,
   type NoticeEvent, type NoticeItem, type NoticeRequest, type NoticeSource, type NoticeStatus, type NoticeTarget, type RequestNoticeItem,
 } from './request-notices';
@@ -87,19 +87,14 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
     const kind = noticeKindLabel(source, subject.kind);
     if (!kind) return;
     const values = readValues(subject.values_json);
+    // A request sent under an earlier privacy text was told its content stays with management.
+    // It never produces a notice, not even when it is closed after this feature went live.
+    if (!noticesDisclosed(source, values)) return;
     const number = consentedWhatsapp(values), jid = number ? whatsappJid(number) : null;
     const chat = await groupFor(ownerId, subject.property_id);
     if (!chat && !jid) return;
 
     const now = clock(), nowIso = now.toISOString();
-    const usage = await first<{waiting: number; group_hour: number; number_day: number; requesters_hour: number}>(`SELECT
-      (SELECT count(*) FROM request_notices WHERE owner_id=? AND status IN ('queued','sending')) waiting,
-      (SELECT count(*) FROM request_notices WHERE owner_id=? AND target='group' AND chat_id=? AND status<>'cancelled' AND created_at>=?) group_hour,
-      (SELECT count(*) FROM request_notices WHERE owner_id=? AND target='requester' AND requester_jid=? AND status<>'cancelled' AND created_at>=?) number_day,
-      (SELECT count(*) FROM request_notices WHERE owner_id=? AND target='requester' AND status<>'cancelled' AND created_at>=?) requesters_hour`,
-      ownerId, ownerId, chat?.id ?? null, ago(now, HOUR), ownerId, jid, ago(now, 24 * HOUR), ownerId, ago(now, HOUR));
-    let waiting = usage?.waiting ?? 0;
-
     // Only the QR form has a subject, and only as one of its fixed options: never free text.
     const category = source === 'guest' && subject.kind === 'maintenance' ? text(values.category) : '';
     const request: NoticeRequest = {
@@ -108,26 +103,33 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
       declaredPlace: text(values.location), description: text(values.description), items: readItems(values.items),
       receivedAt: subject.received_at, closedAt: event === 'closed' ? subject.event_at : undefined,
     };
+    // Each limit is a count the inserting statement makes itself. The forms are public, so two
+    // requests can arrive together: counting first and inserting afterwards would let both pass a
+    // limit that only one of them fits in. The first limit reached gives the reason.
+    type Limit = {reason: string; count: string; args: unknown[]; max: number};
+    const waiting: Limit = {reason: BLOCKED.queue, count: "SELECT count(*) FROM request_notices WHERE owner_id=? AND status IN ('queued','sending')", args: [ownerId], max: NOTICE_QUEUE_LIMIT};
     // A notice stopped by a limit is still recorded, as cancelled and with nothing personal in
     // it, so the Central shows why it did not go out and a replay does not bring it back.
-    const insert = (target: NoticeTarget, chatId: string | null, requesterJid: string | null, blocked: string | null) => stmt(
+    const insert = (target: NoticeTarget, chatId: string | null, requesterJid: string | null, limits: Limit[]) => stmt(
       `INSERT INTO request_notices (id,owner_id,source,source_id,protocol,event,event_key,target,chat_id,requester_jid,body,status,error,created_at,purged_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,source,event_key,target) DO NOTHING`,
-      crypto.randomUUID(), ownerId, source, subject.id, subject.protocol, event, subject.event_id, target, chatId, blocked ? null : requesterJid,
-      blocked ? '' : noticeBody(event, target, request), blocked ? 'cancelled' : 'queued', blocked, nowIso, blocked ? nowIso : null);
-    const statements: D1PreparedStatement[] = [];
-    if (chat) {
-      const blocked = waiting >= NOTICE_QUEUE_LIMIT ? BLOCKED.queue : (usage?.group_hour ?? 0) >= NOTICE_GROUP_HOURLY_LIMIT ? BLOCKED.group : null;
-      statements.push(insert('group', chat.id, null, blocked));
-      if (!blocked) waiting++;
-    }
-    if (jid) {
-      const blocked = waiting >= NOTICE_QUEUE_LIMIT ? BLOCKED.queue
-        : (usage?.number_day ?? 0) >= NOTICE_NUMBER_DAILY_LIMIT ? BLOCKED.number
-          : (usage?.requesters_hour ?? 0) >= NOTICE_REQUESTER_HOURLY_LIMIT ? BLOCKED.requesters : null;
-      statements.push(insert('requester', null, jid, blocked));
-    }
-    await d.db().batch(statements);
+       SELECT ?,?,?,?,?,?,?,?,?,CASE WHEN blocked IS NULL THEN ? END,CASE WHEN blocked IS NULL THEN ? ELSE '' END,
+         CASE WHEN blocked IS NULL THEN 'queued' ELSE 'cancelled' END,blocked,?,CASE WHEN blocked IS NULL THEN NULL ELSE ? END
+       FROM (SELECT CASE ${limits.map(limit => `WHEN (${limit.count})>=? THEN ?`).join(' ')} END blocked) WHERE true
+       ON CONFLICT(owner_id,source,event_key,target) DO NOTHING`,
+      crypto.randomUUID(), ownerId, source, subject.id, subject.protocol, event, subject.event_id, target, chatId,
+      requesterJid, noticeBody(event, target, request), nowIso, nowIso,
+      ...limits.flatMap(limit => [...limit.args, limit.max, limit.reason]));
+    const recent = "AND status<>'cancelled' AND created_at>=?";
+    // One batch: the requester's statement already counts the group notice queued just before it.
+    await d.db().batch([
+      ...(chat ? [insert('group', chat.id, null, [waiting,
+        {reason: BLOCKED.group, count: `SELECT count(*) FROM request_notices WHERE owner_id=? AND target='group' AND chat_id=? ${recent}`, args: [ownerId, chat.id, ago(now, HOUR)], max: NOTICE_GROUP_HOURLY_LIMIT},
+      ])] : []),
+      ...(jid ? [insert('requester', null, jid, [waiting,
+        {reason: BLOCKED.number, count: `SELECT count(*) FROM request_notices WHERE owner_id=? AND target='requester' AND requester_jid=? ${recent}`, args: [ownerId, jid, ago(now, 24 * HOUR)], max: NOTICE_NUMBER_DAILY_LIMIT},
+        {reason: BLOCKED.requesters, count: `SELECT count(*) FROM request_notices WHERE owner_id=? AND target='requester' ${recent}`, args: [ownerId, ago(now, HOUR)], max: NOTICE_REQUESTER_HOURLY_LIMIT},
+      ])] : []),
+    ]);
   }
 
   /** A notice never undoes or fails the action that caused it: failures are logged, without numbers. */

@@ -30,6 +30,18 @@ export const NOTICE_MAX_AGE_HOURS = 24;
 /** Dates in the messages follow the operation's time zone, like the receipts of the forms. */
 export const NOTICE_TIME_ZONE = 'America/Belem';
 
+/**
+ * Versions of each form's privacy text that tell the requester about the notices: a summary goes
+ * to the operation's WhatsApp group and the number given is used to notify them. A request stored
+ * under an earlier text was told its content stays with management, so it never produces a notice,
+ * not even when it is closed later. A new version of a form's text has to be added here on purpose.
+ */
+export const NOTICE_PRIVACY_VERSIONS: Record<NoticeSource, readonly string[]> = {intake: ['general-requests-v2'], guest: ['identified-v2']};
+/** Whether the privacy text a stored request was sent under covers the notices. */
+export function noticesDisclosed(source: NoticeSource, values: {privacy_version?: unknown}): boolean {
+  return typeof values.privacy_version === 'string' && NOTICE_PRIVACY_VERSIONS[source].includes(values.privacy_version);
+}
+
 /** Name under which a delivered group notice appears in the group's history in the Central. */
 export const NOTICE_SENDER_NAME = 'Aviso de solicitação';
 

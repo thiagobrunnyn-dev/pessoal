@@ -53,6 +53,8 @@ Toda solicitação de manutenção, de material ou de compra gera mensagens auto
 
 O código fica em `lib/request-notices.ts` (regras e textos) e `lib/request-notices-api.ts` (fila). A fila é a tabela `request_notices`.
 
+Só gera aviso a solicitação enviada com o texto de privacidade que fala dos avisos (`general-requests-v2` nos formulários gerais e `identified-v2` no canal por QR). Uma solicitação registrada antes disso foi enviada com a promessa de que o conteúdo ficava com a gestão; ela não gera aviso nenhum, nem quando é encerrada depois. Ao mudar o texto de privacidade de um formulário, inclua a nova versão em `NOTICE_PRIVACY_VERSIONS`, em `lib/request-notices.ts`.
+
 ### Quem recebe
 
 - **O grupo de WhatsApp.** É o grupo vinculado ao imóvel na Central (campo "Imóvel relacionado" do grupo). Se o imóvel não tiver grupo, ou a solicitação não tiver imóvel, o aviso vai para o **grupo geral de solicitações**. Sem nenhum dos dois, não há aviso de grupo, e nada falha por isso.
@@ -134,6 +136,7 @@ Os formulários são públicos; os limites existem para que um uso indevido dele
 
 Outros pontos:
 
+- Cada limite é contado pelo mesmo comando que grava o aviso. Dois pedidos que chegam juntos não passam os dois de um limite em que só cabe um.
 - O aviso de grupo confere, na hora em que o n8n retira, se o grupo ainda está cadastrado; se não estiver, vira falha e não é entregue.
 - O painel não confere se o número informado existe no WhatsApp; quem confere é o fluxo Envio, antes de enviar. Número sem WhatsApp, ou envio recusado pelo WAHA, deixa o aviso como falha, com o motivo devolvido pelo n8n.
 - Após 90 dias, os avisos finalizados perdem o texto, o número do solicitante e o identificador da mensagem no WAHA (que também carrega o número). O número que a pessoa digitou continua na solicitação original, que é imutável, e as telas e a API só o mostram mascarado.
