@@ -1,12 +1,14 @@
 // Central do WhatsApp — API. O painel consulta e age por aqui; o n8n usa as mesmas rotas pelo
 // gateway de integrações (/api/integrations/v1/whatsapp) para registrar o que captura no WAHA.
 // O painel nunca chama o WAHA nem o n8n: mensagens a enviar ficam numa fila que o n8n consome.
+// The same claim/result contract also delivers the request notices (lib/request-notices-api.ts).
 import type {Operator} from './app-access';
 import {boundedJson, requireSameOrigin, RequestError} from './http-security';
+import {createRequestNotices} from './request-notices-api';
 import {
-  cleanText, dayOf, dayRange, parseTopics, readAnalysis, readChat, readMessage, readStatus, readSummary, requireDay,
+  cleanText, dayOf, dayRange, GROUP_ROLES, parseTopics, readAnalysis, readChat, readMessage, readStatus, readSummary, requireDay,
   requireList, requireObject, requireRevision, requireUuid, WHATSAPP_RETENTION_DAYS, WHATSAPP_SEND_TIMEOUT_MINUTES,
-  type IncomingChat, type IncomingMessage, type WhatsappChat, type WhatsappMessage, type WhatsappOutboxItem, type WhatsappRequest,
+  type GroupRole, type IncomingChat, type IncomingMessage, type WhatsappChat, type WhatsappMessage, type WhatsappOutboxItem, type WhatsappRequest,
 } from './whatsapp';
 
 type Guard = {sql: string; args: unknown[]};
@@ -26,9 +28,9 @@ type SummaryRow = {id: string; chat_id: string; chat_name: string; day: string; 
 
 const MAX_BODY = 300 * 1024;
 const MACHINE_ACTIONS = ['sync_chats', 'ingest', 'analysis', 'summary', 'outbox_claim', 'outbox_result'];
-const ADMIN_ACTIONS = ['monitor', 'link_property'];
-const VIEWS = ['overview', 'chat', 'requests', 'outbox', 'pending_analysis', 'summary_targets', 'day'];
-const chatColumns = `c.id,c.chat_jid,c.name,c.participants_count,c.monitored,c.property_id,p.name property_name,c.last_message_at,c.revision,
+const ADMIN_ACTIONS = ['monitor', 'link_property', 'group_role'];
+const VIEWS = ['overview', 'targets', 'chat', 'requests', 'outbox', 'pending_analysis', 'summary_targets', 'day'];
+const chatColumns = `c.id,c.chat_jid,c.name,c.participants_count,c.monitored,c.property_id,p.name property_name,c.last_message_at,c.revision,c.requests_default,c.management_default,
   (SELECT count(*) FROM whatsapp_messages m WHERE m.chat_id=c.id AND m.owner_id=c.owner_id AND m.sent_at>=?) messages_24h,
   (SELECT count(*) FROM whatsapp_requests r WHERE r.chat_id=c.id AND r.owner_id=c.owner_id AND r.status IN ('detected','accepted')) open_requests`;
 const chatFrom = 'FROM whatsapp_chats c LEFT JOIN properties p ON p.id=c.property_id AND p.owner_id=c.owner_id';
@@ -38,12 +40,14 @@ const summaryColumns = 's.id,s.chat_id,c.name chat_name,s.day,s.summary,s.topics
 const summaryFrom = 'FROM whatsapp_summaries s JOIN whatsapp_chats c ON c.id=s.chat_id AND c.owner_id=s.owner_id';
 const changes = (result: D1Result) => Number(result.meta?.changes || 0);
 const summaryOut = ({topics_json, ...row}: SummaryRow) => ({...row, topics: parseTopics(topics_json)});
+const waMessageId = (value: unknown) => typeof value === 'string' && /^[\w@.:-]{1,200}$/.test(value) ? value : null;
 const FINAL_OUTBOX = ['sent', 'failed', 'cancelled'], CLOSED_REQUEST = ['done', 'dismissed'];
 
 export function createWhatsappApi(d: WhatsappDependencies) {
   const clock = () => d.now ? d.now() : new Date();
   const reply = (body: unknown, status = 200) => Response.json(body, {status, headers: d.noCache});
   const stmt = (sql: string, ...args: unknown[]) => d.db().prepare(sql).bind(...args);
+  const notices = createRequestNotices({db: d.db, now: d.now});
   const isAdmin = (op: Operator) => !op.integrationId && (op.role === 'owner' || op.role === 'admin');
   const actorName = (op: Operator) => op.actor.fullName || op.actor.displayName;
   const failure = (error: unknown, fallback: string) => {
@@ -63,6 +67,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       stmt('UPDATE whatsapp_messages SET body=NULL,sender_jid=NULL,sender_name=NULL,purged_at=? WHERE id IN (SELECT id FROM whatsapp_messages WHERE owner_id=? AND purged_at IS NULL AND sent_at<? LIMIT 500)', nowIso, op.ownerId, cutoff),
       stmt("UPDATE whatsapp_outbox SET body='',purged_at=? WHERE id IN (SELECT id FROM whatsapp_outbox WHERE owner_id=? AND purged_at IS NULL AND status IN ('sent','failed','cancelled') AND created_at<? LIMIT 200)", nowIso, op.ownerId, cutoff),
       stmt("UPDATE whatsapp_requests SET requester_name=NULL WHERE id IN (SELECT id FROM whatsapp_requests WHERE owner_id=? AND requester_name IS NOT NULL AND status IN ('done','dismissed') AND updated_at<? LIMIT 200)", op.ownerId, cutoff),
+      notices.retentionStatement(op.ownerId, nowIso, cutoff),
     ];
   }
   // As consultas também escondem o que já venceu, mesmo que a limpeza ainda não tenha rodado.
@@ -84,20 +89,33 @@ export function createWhatsappApi(d: WhatsappDependencies) {
   // ---------------------------------------------------------------- consultas
   async function overview(op: Operator) {
     const now = clock(), since = new Date(now.getTime() - 86_400_000).toISOString(), [todayStart] = dayRange(dayOf(now));
-    const chats = await d.all<WhatsappChat>(`SELECT ${chatColumns} ${chatFrom} WHERE c.owner_id=? ORDER BY c.monitored DESC,c.last_message_at DESC,c.name LIMIT 301`, since, op.ownerId);
+    // Groups with a role come first, so they are in the list even when it is cut at 300.
+    const chats = await d.all<WhatsappChat>(`SELECT ${chatColumns} ${chatFrom} WHERE c.owner_id=? ORDER BY c.requests_default+c.management_default DESC,c.monitored DESC,c.last_message_at DESC,c.name LIMIT 301`, since, op.ownerId);
     const totals = await d.first<Json>(`SELECT
       (SELECT count(*) FROM whatsapp_chats WHERE owner_id=? AND monitored=1) monitored_chats,
       (SELECT count(*) FROM whatsapp_messages WHERE owner_id=? AND sent_at>=?) messages_today,
       (SELECT count(*) FROM whatsapp_requests WHERE owner_id=? AND status IN ('detected','accepted')) open_requests,
       (SELECT count(*) FROM whatsapp_requests WHERE owner_id=? AND status IN ('detected','accepted') AND urgency='high') urgent_requests,
-      (SELECT count(*) FROM whatsapp_outbox WHERE owner_id=? AND status IN ('queued','sending')) queued_outbox,
-      (SELECT count(*) FROM whatsapp_outbox WHERE owner_id=? AND status='failed' AND created_at>=?) failed_outbox,
+      (SELECT count(*) FROM whatsapp_outbox WHERE owner_id=? AND status IN ('queued','sending'))
+        + (SELECT count(*) FROM request_notices WHERE owner_id=? AND status IN ('queued','sending')) queued_outbox,
+      (SELECT count(*) FROM whatsapp_outbox WHERE owner_id=? AND status='failed' AND created_at>=?)
+        + (SELECT count(*) FROM request_notices WHERE owner_id=? AND status='failed' AND created_at>=?) failed_outbox,
       (SELECT count(*) FROM whatsapp_messages WHERE owner_id=? AND analyzed_at IS NULL) pending_analysis,
       (SELECT max(received_at) FROM whatsapp_messages WHERE owner_id=? AND direction='in') last_capture_at`,
-      op.ownerId, op.ownerId, todayStart, op.ownerId, op.ownerId, op.ownerId, op.ownerId, since, op.ownerId, op.ownerId);
+      // The send totals cover both queues the n8n delivers: panel sends and request notices.
+      op.ownerId, op.ownerId, todayStart, op.ownerId, op.ownerId, op.ownerId, op.ownerId, op.ownerId, since, op.ownerId, since, op.ownerId, op.ownerId);
     const summaries = await d.all<SummaryRow>(`SELECT ${summaryColumns} ${summaryFrom} WHERE s.owner_id=? ORDER BY s.day DESC,s.updated_at DESC LIMIT 12`, op.ownerId);
     const properties = isAdmin(op) ? await d.all<{id: string; name: string}>('SELECT id,name FROM properties WHERE owner_id=? AND archived_at IS NULL ORDER BY name LIMIT 500', op.ownerId) : [];
     return {chats: chats.slice(0, 300), chats_limited: chats.length > 300, totals, summaries: summaries.map(summaryOut), properties, can_manage: isAdmin(op), retention_days: WHATSAPP_RETENTION_DAYS, today: dayOf(now)};
+  }
+  /**
+   * The groups the n8n flows act on: followed ones (capture) and the two role groups (request
+   * notices, managers' assistant). One query on the groups table, cheap enough to poll every minute.
+   */
+  async function targetsView(op: Operator) {
+    const chats = await d.all<Pick<WhatsappChat, 'id' | 'chat_jid' | 'name' | 'monitored' | 'requests_default' | 'management_default'>>(
+      'SELECT id,chat_jid,name,monitored,requests_default,management_default FROM whatsapp_chats WHERE owner_id=? AND (monitored=1 OR requests_default=1 OR management_default=1) ORDER BY name,id LIMIT 300', op.ownerId);
+    return {chats};
   }
   async function chatRow(op: Operator, id: string) {
     const since = new Date(clock().getTime() - 86_400_000).toISOString();
@@ -127,7 +145,10 @@ export function createWhatsappApi(d: WhatsappDependencies) {
   async function outboxView(op: Operator) {
     const items = await d.all<WhatsappOutboxItem>('SELECT o.id,o.chat_id,c.name chat_name,o.body,o.status,o.created_by_name,o.created_at,o.sent_at,o.error,o.purged_at FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? ORDER BY o.created_at DESC LIMIT 50', op.ownerId);
     const now = clock(), cutoff = retentionCutoff(now);
-    return {items: items.map(item => !item.purged_at && item.created_at < cutoff && FINAL_OUTBOX.includes(item.status) ? {...item, body: '', purged_at: now.toISOString()} : item)};
+    return {
+      items: items.map(item => !item.purged_at && item.created_at < cutoff && FINAL_OUTBOX.includes(item.status) ? {...item, body: '', purged_at: now.toISOString()} : item),
+      notices: await notices.list(op.ownerId, now, cutoff),
+    };
   }
   async function pendingAnalysis(op: Operator, query: URLSearchParams) {
     const rawLimit = query.get('limit') || '25';
@@ -158,7 +179,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       for (const key of query.keys()) if (!['view', 'id', 'day', 'status', 'before', 'limit'].includes(key) || query.getAll(key).length !== 1) throw new RequestError('Consulta inválida.');
       const view = query.get('view') || 'overview';
       if (!VIEWS.includes(view)) throw new RequestError('Consulta inválida.');
-      const body = view === 'overview' ? await overview(op) : view === 'chat' ? await chatView(op, query) : view === 'requests' ? await requestsView(op, query)
+      const body = view === 'overview' ? await overview(op) : view === 'targets' ? await targetsView(op) : view === 'chat' ? await chatView(op, query) : view === 'requests' ? await requestsView(op, query)
         : view === 'outbox' ? await outboxView(op) : view === 'pending_analysis' ? await pendingAnalysis(op, query)
         : view === 'summary_targets' ? await summaryTargets(op, query) : await dayView(op, query);
       await assertAccess(op);
@@ -201,19 +222,26 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       `INSERT INTO whatsapp_chats (id,owner_id,chat_jid,kind,name,monitored,revision,created_at,updated_at)
        SELECT ?,?,?,'group',?,0,0,?,? WHERE ${guard.sql} ON CONFLICT(owner_id,chat_jid) DO NOTHING`,
       crypto.randomUUID(), op.ownerId, jid, messages.find(message => message.chatJid === jid && message.chatName)?.chatName || jid, nowIso, nowIso, ...guard.args)));
-    const chats = await d.all<{id: string; chat_jid: string; monitored: number}>('SELECT id,chat_jid,monitored FROM whatsapp_chats WHERE owner_id=? AND chat_jid IN (SELECT value FROM json_each(?))', op.ownerId, JSON.stringify(jids));
+    const chats = await d.all<{id: string; chat_jid: string; monitored: number; monitored_changed_at: string | null}>('SELECT id,chat_jid,monitored,monitored_changed_at FROM whatsapp_chats WHERE owner_id=? AND chat_jid IN (SELECT value FROM json_each(?))', op.ownerId, JSON.stringify(jids));
     const byJid = new Map(chats.map(chat => [chat.chat_jid, chat]));
-    const accepted = messages.filter(message => byJid.get(message.chatJid)?.monitored === 1);
+    // Só entra o que foi escrito depois de o grupo passar a ser acompanhado. A captura do n8n relê
+    // alguns minutos para trás (e horas, depois de uma parada), e esse período pode ser anterior
+    // ao aviso dado ao grupo.
+    const accepted = messages.filter(message => {
+      const chat = byJid.get(message.chatJid);
+      return chat?.monitored === 1 && (!chat.monitored_changed_at || message.sentAt >= chat.monitored_changed_at);
+    });
     const inserts = accepted.map(message => {
       const chat = byJid.get(message.chatJid)!;
       // Mensagens enviadas pela própria conta ou sem texto não vão para a análise.
       const analyzedAt = message.direction === 'out' || !message.body ? nowIso : null;
       return stmt(
         `INSERT INTO whatsapp_messages (id,owner_id,chat_id,wa_message_id,direction,sender_jid,sender_name,kind,body,has_media,sent_at,received_at,analyzed_at)
-         SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard.sql} AND EXISTS(SELECT 1 FROM whatsapp_chats WHERE id=? AND owner_id=? AND monitored=1)
+         SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard.sql}
+           AND EXISTS(SELECT 1 FROM whatsapp_chats WHERE id=? AND owner_id=? AND monitored=1 AND (monitored_changed_at IS NULL OR monitored_changed_at<=?))
          ON CONFLICT(owner_id,wa_message_id) DO NOTHING`,
         crypto.randomUUID(), op.ownerId, chat.id, message.waMessageId, message.direction, message.senderJid, message.senderName, message.kind, message.body,
-        message.hasMedia, message.sentAt, nowIso, analyzedAt, ...guard.args, chat.id, op.ownerId);
+        message.hasMedia, message.sentAt, nowIso, analyzedAt, ...guard.args, chat.id, op.ownerId, message.sentAt);
     });
     const latest = new Map<string, string>();
     for (const message of accepted) {
@@ -273,28 +301,42 @@ export function createWhatsappApi(d: WhatsappDependencies) {
     // Envio entregue ao n8n e nunca confirmado vira falha. Não há reenvio automático,
     // para um grupo não receber a mesma mensagem duas vezes.
     const stale = new Date(now.getTime() - WHATSAPP_SEND_TIMEOUT_MINUTES * 60_000).toISOString();
-    await stmt(`UPDATE whatsapp_outbox SET status='failed',error='Envio não confirmado pelo n8n. Confira o grupo antes de reenviar.' WHERE owner_id=? AND status='sending' AND claimed_at<? AND ${guard.sql}`, op.ownerId, stale, ...guard.args).run();
-    const queued = await d.all<{id: string; body: string; chat_jid: string}>("SELECT o.id,o.body,c.chat_jid FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? AND o.status='queued' ORDER BY o.created_at LIMIT ?", op.ownerId, limit);
+    await d.db().batch([
+      stmt(`UPDATE whatsapp_outbox SET status='failed',error='Envio não confirmado pelo n8n. Confira o grupo antes de reenviar.' WHERE owner_id=? AND status='sending' AND claimed_at<? AND ${guard.sql}`, op.ownerId, stale, ...guard.args),
+      ...notices.sweepStatements(op.ownerId, guard, now),
+    ]);
+    const sends = await d.all<{id: string; body: string; chat_jid: string; created_at: string}>("SELECT o.id,o.body,c.chat_jid,o.created_at FROM whatsapp_outbox o JOIN whatsapp_chats c ON c.id=o.chat_id AND c.owner_id=o.owner_id WHERE o.owner_id=? AND o.status='queued' ORDER BY o.created_at LIMIT ?", op.ownerId, limit);
+    // Panel sends and request notices share the limit, oldest first (panel sends first on a tie).
+    const queued = [...sends.map(item => ({...item, notice: false})), ...(await notices.claimable(op.ownerId, limit)).map(item => ({...item, notice: true}))]
+      .sort((a, b) => a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0).slice(0, limit);
     if (!queued.length) {
       await d.db().batch(retentionStatements(op, now));
       return {messages: []};
     }
-    const results = await d.db().batch(queued.map(item => stmt(`UPDATE whatsapp_outbox SET status='sending',claimed_at=? WHERE id=? AND owner_id=? AND status='queued' AND ${guard.sql}`, nowIso, item.id, op.ownerId, ...guard.args)));
+    const results = await d.db().batch(queued.map(item => item.notice
+      ? notices.claimStatement(op.ownerId, item.id, guard, nowIso)
+      : stmt(`UPDATE whatsapp_outbox SET status='sending',claimed_at=? WHERE id=? AND owner_id=? AND status='queued' AND ${guard.sql}`, nowIso, item.id, op.ownerId, ...guard.args)));
     await d.db().batch(retentionStatements(op, now));
-    return {messages: queued.filter((_, index) => changes(results[index]) === 1)};
+    // Both queues answer in the one item format the n8n flow reads: id, body and chat_jid.
+    return {messages: queued.filter((_, index) => changes(results[index]) === 1).map(({id, body, chat_jid}) => ({id, body, chat_jid}))};
   }
 
   async function outboxResult(op: Operator, body: Json) {
     const id = requireUuid(body.id, 'Envio não encontrado.'), nowIso = clock().toISOString(), guard = d.operatorGuard(op);
     if (typeof body.ok !== 'boolean') throw new RequestError('Informe ok como verdadeiro ou falso.');
     const item = await d.first<{chat_id: string; body: string; created_by_name: string}>("SELECT chat_id,body,created_by_name FROM whatsapp_outbox WHERE id=? AND owner_id=? AND status='sending'", id, op.ownerId);
-    if (!item) throw new RequestError('Este envio não está aguardando confirmação.', 409);
+    if (!item) {
+      // Not a panel send: the id may belong to a request notice, delivered through this same contract.
+      const notice = await notices.confirm(op.ownerId, id, guard, body.ok ? {ok: true, waMessageId: waMessageId(body.wa_message_id)} : {ok: false, error: cleanText(body.error, 300) || 'Falha no envio.'}, nowIso);
+      if (!notice) throw new RequestError('Este envio não está aguardando confirmação.', 409);
+      return notice;
+    }
     if (!body.ok) {
       const result = await stmt(`UPDATE whatsapp_outbox SET status='failed',error=? WHERE id=? AND owner_id=? AND status='sending' AND ${guard.sql}`, cleanText(body.error, 300) || 'Falha no envio.', id, op.ownerId, ...guard.args).run();
       if (!changes(result)) throw new RequestError('Este envio não está aguardando confirmação.', 409);
       return {id, status: 'failed'};
     }
-    const waId = typeof body.wa_message_id === 'string' && /^[\w@.:-]{1,200}$/.test(body.wa_message_id) ? body.wa_message_id : 'outbox:' + id;
+    const waId = waMessageId(body.wa_message_id) || 'outbox:' + id;
     const results = await d.db().batch([
       stmt(`UPDATE whatsapp_outbox SET status='sent',sent_at=?,wa_message_id=?,error=NULL WHERE id=? AND owner_id=? AND status='sending' AND ${guard.sql}`, nowIso, waId, id, op.ownerId, ...guard.args),
       // A mensagem enviada entra no histórico do grupo; se o WAHA também a devolver na captura, o id repetido é ignorado.
@@ -324,6 +366,26 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       AND (? IS NULL OR EXISTS(SELECT 1 FROM properties WHERE id=? AND owner_id=? AND archived_at IS NULL))`,
       propertyId, nowIso, id, op.ownerId, revision, ...guard.args, propertyId, propertyId, op.ownerId).run();
     if (!changes(result)) throw new RequestError('O grupo ou o imóvel mudou. Atualize a página.', 409);
+    return {chat: await chatRow(op, id)};
+  }
+  /**
+   * Gives or removes one of the two group roles: `requests` (general group for request notices)
+   * or `management` (the managers' group, read by the n8n assistant). Each role belongs to at most
+   * one group per owner, so giving it to a group takes it from the group that had it.
+   */
+  async function groupRole(op: Operator, body: Json) {
+    const id = requireUuid(body.chat_id, 'Grupo não encontrado.'), revision = requireRevision(body.expected_revision), nowIso = clock().toISOString(), guard = d.operatorGuard(op);
+    if (typeof body.role !== 'string' || !Object.hasOwn(GROUP_ROLES, body.role)) throw new RequestError('Informe a função do grupo: requests (grupo geral de solicitações) ou management (grupo da gestão).');
+    if (typeof body.enabled !== 'boolean') throw new RequestError('Informe se o grupo deve ter essa função.');
+    const column = GROUP_ROLES[body.role as GroupRole];
+    const results = await d.db().batch([
+      // Only when the chosen group is still at the expected revision, so a stale screen changes nothing.
+      ...(body.enabled ? [stmt(`UPDATE whatsapp_chats SET ${column}=0,revision=revision+1,updated_at=? WHERE owner_id=? AND ${column}=1 AND id<>? AND ${guard.sql}
+        AND EXISTS(SELECT 1 FROM whatsapp_chats WHERE id=? AND owner_id=? AND revision=?)`, nowIso, op.ownerId, id, ...guard.args, id, op.ownerId, revision)] : []),
+      stmt(`UPDATE whatsapp_chats SET ${column}=?,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND ${guard.sql}`,
+        body.enabled ? 1 : 0, nowIso, id, op.ownerId, revision, ...guard.args),
+    ]);
+    if (!changes(results[results.length - 1])) throw new RequestError('O grupo mudou ou não foi encontrado. Atualize a página.', 409);
     return {chat: await chatRow(op, id)};
   }
   async function send(op: Operator, body: Json) {
@@ -376,7 +438,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
       const body = requireObject(await boundedJson(request, MAX_BODY)), action = body.action;
       if (typeof action !== 'string') throw new RequestError('Informe a ação.');
       if (MACHINE_ACTIONS.includes(action) && !op.integrationId) throw new RequestError('Esta ação é exclusiva da integração com o n8n.', 403);
-      if (ADMIN_ACTIONS.includes(action) && !isAdmin(op)) throw new RequestError('Somente administradores definem os grupos acompanhados.', 403);
+      if (ADMIN_ACTIONS.includes(action) && !isAdmin(op)) throw new RequestError('Somente administradores configuram os grupos da Central.', 403);
       await assertAccess(op);
       switch (action) {
         case 'sync_chats': return reply(await syncChats(op, body));
@@ -387,6 +449,7 @@ export function createWhatsappApi(d: WhatsappDependencies) {
         case 'outbox_result': return reply(await outboxResult(op, body));
         case 'monitor': return reply(await monitor(op, body));
         case 'link_property': return reply(await linkProperty(op, body));
+        case 'group_role': return reply(await groupRole(op, body));
         case 'send': return reply(await send(op, body), 201);
         case 'cancel_send': return reply(await cancelSend(op, body));
         case 'request_status': return reply(await requestStatus(op, body));

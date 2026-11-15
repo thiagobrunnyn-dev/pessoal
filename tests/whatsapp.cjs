@@ -120,6 +120,14 @@ const message = (id, extra = {}) => ({chat_jid: GROUP, chat_name: 'Alojamento A'
     assert.equal((await panel('POST', '', {action: 'monitor', chat_id: chat.id, monitored: false, expected_revision: 0})).status, 409);
     assert.equal(get('SELECT monitored_changed_by FROM whatsapp_chats WHERE id=?', chat.id).monitored_changed_by, 'Owner QA');
   });
+  await test('only messages written after the group became followed are stored', async () => {
+    // The n8n capture re-reads some minutes back: what was written before the group was told stays out.
+    const early = await n8n(write, 'POST', '', {action: 'ingest', messages: [message('early', {timestamp: now - 3600})]});
+    assert.deepEqual(early.data, {stored: 0, duplicates: 0, unmonitored: 1, ignored: 0});
+    assert.equal(get('SELECT count(*) n FROM whatsapp_messages').n, 0);
+    // The rest of the suite treats the group as followed for a long time, so its past-dated messages are stored.
+    run('UPDATE whatsapp_chats SET monitored_changed_at=? WHERE id=?', new Date((now - 200 * 86400) * 1000).toISOString(), chat.id);
+  });
   await test('ingest stores once, skips analysis for own and media-only messages', async () => {
     const batch = [message('m-1'), message('m-2', {body: 'bom dia pessoal', timestamp: now - 50}), message('m-3', {from_me: true, body: 'Vamos verificar', timestamp: now - 40}), message('m-4', {kind: 'image', body: '', has_media: true, timestamp: now - 30}), message('o-1', {chat_jid: OTHER})];
     const first = await n8n(write, 'POST', '', {action: 'ingest', messages: batch});

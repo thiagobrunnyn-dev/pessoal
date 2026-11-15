@@ -6,6 +6,7 @@ import {SITE_OWNER_ID} from './owner-access';
 import {guestUuid,guestToken,guestReceipt} from './guest-channel-model';
 import {GUEST_HEADERS,guestLimit,uploadBudget,hashBytes} from './guest-channel-public';
 import {INTAKE_PRIVACY_VERSION,INTAKE_KINDS,intakeKind,parseIntakeValues,type IntakeKind} from './request-intake-model';
+import {requestNotices} from './request-notices-runtime';
 export {GUEST_HEADERS};
 const sessionSeconds=900,cookieName=(kind:IntakeKind)=>'__Host-mobiliza-request-'+kind;
 export function publicFormData(value:string){const kind=intakeKind(value);return {kind,title:INTAKE_KINDS[kind],privacy_version:INTAKE_PRIVACY_VERSION};}
@@ -16,7 +17,9 @@ export async function startIntakeSession(request:Request,value:string){
  await db().prepare('DELETE FROM request_form_sessions WHERE id IN(SELECT id FROM request_form_sessions WHERE expires_at<? LIMIT 100)').bind(now-900).run();
  return {data:{challenge,expires_at:now+sessionSeconds},cookie:`${cookieName(kind)}=${cookie}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${sessionSeconds}`};
 }
-export async function submitIntake(request:Request,value:string,form:FormData){
+// The notices are queued after every confirmed save, replays included, so one is not lost when a first attempt saved the request and stopped there.
+export async function submitIntake(request:Request,value:string,form:FormData){const receipt=await saveIntake(request,value,form);await requestNotices.queueReceived(SITE_OWNER_ID,'intake',receipt.protocol);return receipt;}
+async function saveIntake(request:Request,value:string,form:FormData){
  const kind=intakeKind(value),allowed=['request_id','challenge','values','photos','website'];
  for(const[k]of form)if(!allowed.includes(k)||k!=='photos'&&form.getAll(k).length!==1)throw new RequestError('Envie somente os campos do formulário.');
  if(form.get('website'))throw new RequestError('Envio inválido.');

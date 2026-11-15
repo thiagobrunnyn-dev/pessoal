@@ -1097,7 +1097,7 @@
       "POST"
     ],
     "body": "application/json",
-    "description": "Registro de grupos, mensagens, análises, resumos e fila de envio do WhatsApp. O n8n captura no WAHA e grava aqui; o painel nunca chama o WAHA. Só grupos habilitados no painel têm mensagens armazenadas, e o texto é apagado após 90 dias.",
+    "description": "Registro de grupos, mensagens, análises, resumos e fila de envio do WhatsApp. O n8n captura no WAHA e grava aqui; o painel nunca chama o WAHA. Só grupos habilitados no painel têm mensagens armazenadas, e o texto é apagado após 90 dias. A fila de envio (outbox_claim e outbox_result) também entrega os avisos de solicitações. view=targets lista só os grupos acompanhados, o grupo geral de solicitações e o grupo da gestão.",
     "query": [
       "before",
       "day",
@@ -1112,6 +1112,7 @@
       "chats",
       "confirmed",
       "day",
+      "enabled",
       "error",
       "expected_revision",
       "id",
@@ -1123,6 +1124,7 @@
       "ok",
       "property_id",
       "request_id",
+      "role",
       "sentiment",
       "status",
       "summary",
@@ -1132,6 +1134,7 @@
     "actions": [
       "analysis",
       "cancel_send",
+      "group_role",
       "ingest",
       "link_property",
       "monitor",

@@ -221,8 +221,16 @@ export const whatsappChats = sqliteTable('whatsapp_chats', {
   revision: integer('revision').notNull().default(0),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+  // Two roles an administrator gives to a group; the partial unique indexes below allow one group
+  // per owner for each. requests_default = 1: the general group for request notices, used when
+  // the request's property has no linked group. management_default = 1: the managers' group,
+  // which the n8n assistant reads from the overview; the panel sends nothing to it on its own.
+  requestsDefault: integer('requests_default').notNull().default(0),
+  managementDefault: integer('management_default').notNull().default(0),
 }, table => [
   uniqueIndex('idx_whatsapp_chats_jid').on(table.ownerId, table.chatJid),
+  uniqueIndex('idx_whatsapp_chats_requests_default').on(table.ownerId).where(sql`requests_default = 1`),
+  uniqueIndex('idx_whatsapp_chats_management_default').on(table.ownerId).where(sql`management_default = 1`),
   check('whatsapp_chat_kind', sql`${table.kind} = 'group'`),
   check('whatsapp_chat_monitored', sql`${table.monitored} IN (0,1)`),
 ]);
@@ -311,4 +319,40 @@ export const whatsappOutbox = sqliteTable('whatsapp_outbox', {
 }, table => [
   index('idx_whatsapp_outbox_status').on(table.ownerId, table.status, table.createdAt),
   check('whatsapp_outbox_status', sql`${table.status} IN ('queued','sending','sent','failed','cancelled')`),
+]);
+
+// Request notices: WhatsApp messages queued when a request is registered or closed, one per
+// target (the operation group and, when authorised, the requester). The n8n delivers them through
+// the same claim/result contract as whatsapp_outbox. Text and requester number are erased after
+// the Central's retention period (lib/request-notices-api.ts).
+export const requestNotices = sqliteTable('request_notices', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  // 'intake' = request_intakes (general forms); 'guest' = guest_submissions (property QR channel).
+  source: text('source').notNull(),
+  sourceId: text('source_id').notNull(),
+  protocol: text('protocol').notNull(),
+  event: text('event').notNull(),
+  // Id of the history row that caused the notice (the 'received' or the 'close' event), so a
+  // replay never duplicates it and closing again after a reopen yields a new notice.
+  eventKey: text('event_key').notNull(),
+  target: text('target').notNull(),
+  chatId: text('chat_id').references(() => whatsappChats.id),
+  requesterJid: text('requester_jid'),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('queued'),
+  createdAt: text('created_at').notNull(),
+  claimedAt: text('claimed_at'),
+  sentAt: text('sent_at'),
+  waMessageId: text('wa_message_id'),
+  error: text('error'),
+  purgedAt: text('purged_at'),
+}, table => [
+  uniqueIndex('idx_request_notices_event').on(table.ownerId, table.source, table.eventKey, table.target),
+  index('idx_request_notices_status').on(table.ownerId, table.status, table.createdAt),
+  index('idx_request_notices_created').on(table.ownerId, table.createdAt),
+  check('request_notice_source', sql`${table.source} IN ('intake','guest')`),
+  check('request_notice_event', sql`${table.event} IN ('received','closed')`),
+  check('request_notice_target', sql`(${table.target} = 'group' AND ${table.chatId} IS NOT NULL AND ${table.requesterJid} IS NULL) OR (${table.target} = 'requester' AND ${table.chatId} IS NULL)`),
+  check('request_notice_status', sql`${table.status} IN ('queued','sending','sent','failed','cancelled')`),
 ]);

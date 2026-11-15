@@ -12,7 +12,7 @@ type Summary = {
   id: string; protocol: string; kind: GuestRequestKind; status: string; received_at: string;
   property_id: string; property_name: string; name: string; job_title: string; category: string; description: string; photo_count: number;
 };
-type RequestDetail = Summary & {address: string; location: string; contact: string; company: string;
+type RequestDetail = Summary & {address: string; location: string; contact: string; whatsapp: string; company: string;
   cost_center: string; items: GuestItem[]; scores: GuestScores; unable_to_photo: boolean; revision: number;
   can_triage: boolean; scope_changed: boolean; linked_order_id: string | null};
 type List = {requests: Summary[]; properties: {id: string; name: string}[]; truncated?: boolean; next_cursor?: string | null; query_key?: string};
@@ -131,6 +131,7 @@ function DetailView({detail, headingRef}: {detail: Detail; headingRef: {current:
       <div><dt>Nome informado</dt><dd>{row.name}</dd></div><div><dt>Perfil / função informada</dt><dd>{row.job_title || 'Não informada'}</dd></div>
       {row.kind === 'maintenance' && <div><dt>Assunto</dt><dd>{guestCategoryLabel(row.category)}</dd></div>}
       <div><dt>Quarto, ambiente ou área</dt><dd>{row.location || 'Não informado'}</dd></div><div><dt>Contato informado</dt><dd>{row.contact || 'Não informado'}</dd></div>
+      {row.whatsapp && <div><dt>WhatsApp para avisos</dt><dd>{row.whatsapp}</dd></div>}
       <div><dt>Empresa informada</dt><dd>{row.company || 'Não informada'}</dd></div><div><dt>Centro de custo informado</dt><dd>{row.cost_center || 'Não informado'}</dd></div></dl>
     <section className="gr-detail-section"><h3>{row.kind === 'rating' ? 'Comentário' : 'Descrição'}</h3><p className="gr-full-text">{row.description || 'Nenhum comentário informado.'}</p></section>
     {row.kind === 'rating' && <section className="gr-detail-section"><h3>Notas da hospedagem</h3><dl className="gr-fields gr-ratings">{(Object.keys(GUEST_SCORE_LABELS) as (keyof GuestScores)[]).map(key => <div key={key}><dt>{GUEST_SCORE_LABELS[key]}</dt>

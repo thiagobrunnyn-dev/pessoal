@@ -9,7 +9,7 @@ export type GuestChannel = {
 };
 export type GuestValues = {
   kind: GuestRequestKind; category: GuestMaintenanceCategory | ''; name: string; job_title: string; location: string;
-  description: string; contact: string; company: string; cost_center: string;
+  description: string; contact: string; whatsapp: string; whatsapp_consent: boolean; company: string; cost_center: string;
   items: GuestItem[]; scores: GuestScores; unable_to_photo: boolean;
   privacy_accepted: true; privacy_version: string;
 };

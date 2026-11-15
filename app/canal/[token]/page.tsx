@@ -4,7 +4,7 @@ import GuestChannelForm from '../../components/guest-channel-form';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: {absolute: 'Canal de solicitações | MOBILIZA FACILITIES'},
-  description: 'Solicite manutenção ou melhorias no imóvel. Informações e fotos recebidas de forma privada pela gestão.',
+  description: 'Solicite manutenção ou melhorias no imóvel. As informações e fotos são recebidas pela gestão da MOBILIZA.',
   robots: {index: false, follow: false}, referrer: 'no-referrer',
 };
 
