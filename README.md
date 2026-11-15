@@ -34,6 +34,8 @@ Em **Configurações → Conectar ao n8n**, o Mobiliza apresenta o catálogo da 
 
 Os quatro modelos e as instruções de importação estão no [guia do n8n](n8n-mobiliza/README.md). A [Central do WhatsApp](n8n-mobiliza/CENTRAL-WHATSAPP.md) registra no painel os grupos acompanhados pelo WAHA, com análise, resumos e fila de envio. Eles cobrem conexão, solicitações e prazos, indicadores semanais e disponibilidade das páginas públicas.
 
+Pela fila de envio da Central também saem os avisos de solicitações: quando uma solicitação é registrada e quando é encerrada, o grupo de WhatsApp do imóvel (ou o grupo geral) e, se autorizou, o solicitante recebem uma mensagem com o protocolo. As regras, os limites e o que vai em cada mensagem estão na seção "Avisos de solicitações" do guia da Central.
+
 ## Verificação
 
-Para verificar as mudanças de acesso, painel e integração, rode `node tests/password-access.cjs`, `node tests/hub-requests.cjs`, `node tests/request-intakes.cjs` e `node tests/integrations.cjs`.
+Para verificar as mudanças de acesso, painel e integração, rode `node tests/password-access.cjs`, `node tests/hub-requests.cjs`, `node tests/request-intakes.cjs` e `node tests/integrations.cjs`. Para a Central do WhatsApp e os avisos de solicitações, rode `node tests/whatsapp.cjs` e `node tests/request-notices.cjs`.
