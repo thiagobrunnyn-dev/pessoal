@@ -3,6 +3,7 @@
 import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
 import {CheckCircle2, House, Package, ShieldCheck, Star, Wrench, X} from 'lucide-react';
 import {GUEST_MAINTENANCE_CATEGORIES, type GuestMaintenanceCategory} from '../../lib/guest-request-categories';
+import {normalizeWhatsapp, WHATSAPP_CONSENT_REQUIRED, WHATSAPP_INVALID} from '../../lib/request-notices';
 import PhotoFileControls from './photo-file-controls';
 import {prepareMobilizationPhoto} from '../mobilization-form';
 import {
@@ -15,7 +16,7 @@ import './guest-channel.dark.css';
 
 type Draft = {
   kind: GuestRequestKind; category: GuestMaintenanceCategory | ''; requester_type: string; name: string; job_title: string; location: string; description: string;
-  contact: string; company: string; cost_center: string;
+  contact: string; whatsapp: string; whatsapp_consent: boolean; company: string; cost_center: string;
   items: {name: string; quantity: string; unit: string}[];
   scores: GuestScores; unable_to_photo: boolean; privacy_accepted: boolean;
 };
@@ -24,7 +25,7 @@ const kinds = [
   {value: 'maintenance', icon: Wrench}, {value: 'material', icon: Package}, {value: 'rating', icon: Star},
 ] as const;
 const freshDraft = (): Draft => ({kind: 'maintenance', category: '', requester_type: '', name: '', job_title: '', location: '',
-  description: '', contact: '', company: '', cost_center: '', items: [{name: '', quantity: '', unit: ''}],
+  description: '', contact: '', whatsapp: '', whatsapp_consent: false, company: '', cost_center: '', items: [{name: '', quantity: '', unit: ''}],
   scores: emptyGuestScores(), unable_to_photo: false, privacy_accepted: false});
 const errorText = (error: unknown) => error instanceof Error && error.name !== 'AbortError'
   ? error.message : 'A conexão demorou mais do que o esperado.';
@@ -53,7 +54,7 @@ export default function GuestChannelForm({token}: {token: string}) {
   const lastChannel = useRef<GuestChannel | null>(null);
   const heading = useRef<HTMLHeadingElement>(null), errorRef = useRef<HTMLDivElement>(null);
   const dirty = !receipt && (!!draft.category || !!draft.requester_type || !!draft.name || !!draft.job_title || !!draft.location || !!draft.description || !!draft.contact
-    || !!draft.company || !!draft.cost_center || draft.items.some(item => !!item.name || !!item.quantity || !!item.unit)
+    || !!draft.whatsapp || !!draft.company || !!draft.cost_center || draft.items.some(item => !!item.name || !!item.quantity || !!item.unit)
     || Object.values(draft.scores).some(score => score !== null) || draft.privacy_accepted || files.length > 0 || uncertain);
 
   const load = useCallback(async () => {
@@ -89,6 +90,11 @@ export default function GuestChannelForm({token}: {token: string}) {
     if (working.current || preparingRef.current || uncertain) return;
     pending.current = null; setDraft(previous => ({...previous, [key]: value})); setError('');
   }
+  function editWhatsapp(value: string) {
+    edit('whatsapp', value);
+    // Emptying the field withdraws the authorisation given for the number that was there.
+    if (!value.trim()) edit('whatsapp_consent', false);
+  }
   async function addPhotos(input: HTMLInputElement) {
     const selected = Array.from(input.files ?? []); input.value = '';
     if (!selected.length || working.current || preparingRef.current || uncertain || draft.unable_to_photo) return;
@@ -118,11 +124,16 @@ export default function GuestChannelForm({token}: {token: string}) {
     if (draft.kind === 'material' && (!items.length || items.some(item => !item.name || !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 100000 || !/^\d+(?:\.\d{1,3})?$/.test(String(item.quantity))))) {
       throw new Error('Informe o material e uma quantidade positiva de até 100.000, com no máximo três casas decimais.');
     }
+    // Ratings produce no notices, so they never carry a WhatsApp number.
+    const whatsapp = draft.kind !== 'rating' && draft.whatsapp.trim() ? normalizeWhatsapp(draft.whatsapp) : '';
+    if (whatsapp === null) throw new Error(WHATSAPP_INVALID);
+    if (whatsapp && !draft.whatsapp_consent) throw new Error(WHATSAPP_CONSENT_REQUIRED);
     if (!draft.privacy_accepted) throw new Error('Leia e confirme como seus dados serão usados.');
     return {id: crypto.randomUUID(), revision: channel.channel_revision, files: draft.kind === 'rating' ? [] : [...files], values: {
       kind: draft.kind, category: draft.kind === 'maintenance' ? draft.category : '', name: draft.name.trim(),
       job_title: [draft.requester_type, ['Equipe / prestador', 'Outro'].includes(draft.requester_type) ? draft.job_title.trim() : ''].filter(Boolean).join(' · '), location: draft.location.trim(),
-      description: draft.description.trim(), contact: draft.contact.trim(), company: draft.company.trim(), cost_center: draft.cost_center.trim(),
+      description: draft.description.trim(), contact: draft.contact.trim(), whatsapp, whatsapp_consent: !!whatsapp,
+      company: draft.company.trim(), cost_center: draft.cost_center.trim(),
       items, scores: draft.kind === 'rating' ? {...draft.scores} : emptyGuestScores(), unable_to_photo: draft.kind === 'rating' ? false : draft.unable_to_photo,
       privacy_accepted: true, privacy_version: channel.privacy_version,
     }};
@@ -185,7 +196,7 @@ export default function GuestChannelForm({token}: {token: string}) {
         <p className="guest-help">O protocolo confirma o recebimento. O atendimento e o prazo dependem da análise da gestão.</p>
         <button type="button" className="button secondary" onClick={() => {setReceipt(null); setError(''); setPhotoError(''); void load();}}>Fazer outro registro</button>
       </section> : <>
-        <section className="guest-intro"><h1>{draft.kind === 'maintenance' ? 'Solicitar manutenção ou melhoria' : GUEST_KIND_LABELS[draft.kind]}</h1><p>{draft.kind === 'maintenance' ? 'Lâmpada, internet, elétrica, hidráulica, ar-condicionado, mobiliário ou outra necessidade do imóvel.' : 'A gestão recebe as informações de forma privada.'}</p></section>
+        <section className="guest-intro"><h1>{draft.kind === 'maintenance' ? 'Solicitar manutenção ou melhoria' : GUEST_KIND_LABELS[draft.kind]}</h1><p>{draft.kind === 'maintenance' ? 'Lâmpada, internet, elétrica, hidráulica, ar-condicionado, mobiliário ou outra necessidade do imóvel.' : draft.kind === 'material' ? 'Informe os materiais necessários para o imóvel. A gestão analisa o pedido.' : 'A gestão recebe as informações de forma privada.'}</p></section>
         <form className="panel guest-form" onSubmit={submit} autoComplete="off">
           <fieldset disabled={locked} className="guest-fieldset">
             <legend className="sr-only">Dados do registro</legend>
@@ -230,6 +241,13 @@ export default function GuestChannelForm({token}: {token: string}) {
                 value={draft.job_title} onChange={event => edit('job_title', event.target.value)} autoComplete="off" placeholder="Informe se for relevante para a solicitação"/></label>}
               <label className="field"><span>Contato para retorno (opcional)</span><input maxLength={160} value={draft.contact}
                 onChange={event => edit('contact', event.target.value)} autoComplete="off" placeholder="Telefone ou e-mail"/></label>
+              {draft.kind !== 'rating' && <>
+                <label className="field"><span>WhatsApp para receber avisos (opcional)</span><input type="tel" inputMode="tel" maxLength={24} value={draft.whatsapp}
+                  onChange={event => editWhatsapp(event.target.value)} autoComplete="off" placeholder="(91) 98888-7777"/></label>
+                {!!draft.whatsapp.trim() && <label className="guest-check"><input type="checkbox" required checked={draft.whatsapp_consent}
+                  onChange={event => edit('whatsapp_consent', event.target.checked)}/><span>Autorizo receber no WhatsApp os avisos desta solicitação. <b aria-hidden="true">*</b></span></label>}
+                <p className="guest-help">Com o WhatsApp informado, você recebe um aviso quando a solicitação é registrada e outro quando ela é encerrada.</p>
+              </>}
               <details className="guest-optional"><summary>Dados da empresa (opcional)</summary><div className="guest-columns"><label className="field"><span>Empresa informada (opcional)</span><input maxLength={180} value={draft.company}
                 onChange={event => edit('company', event.target.value)} autoComplete="off"/></label><label className="field"><span>Centro de custo informado (opcional)</span>
                 <input maxLength={180} value={draft.cost_center} onChange={event => edit('cost_center', event.target.value)} autoComplete="off"/></label></div></details>
@@ -244,8 +262,9 @@ export default function GuestChannelForm({token}: {token: string}) {
               {files.length > 0 && <p className="guest-help">Para marcar que não consegue fotografar, remova as fotos selecionadas.</p>}
             </div> : files.length > 0 && <p className="guest-help">As fotos ficam no pedido e não são enviadas na avaliação. Para vê-las, volte ao tipo de solicitação anterior.</p>}
             <p className="guest-urgency">Este canal não atende emergências e não garante resposta imediata. Em situação de risco, procure o responsável local ou o serviço de emergência adequado.</p>
-            <div className="guest-privacy"><ShieldCheck size={22} aria-hidden="true"/><div><h2>Uso das informações</h2><p>Seu nome e os demais dados informados, incluindo fotos, serão recebidos pela gestão da MOBILIZA FACILITIES para analisar e tratar este registro. O conteúdo é privado para a gestão.</p>
-              <p>Se informar um contato, ele poderá ser usado para retorno sobre este registro. Envie apenas os dados necessários e informações que você possa compartilhar.</p>
+            <div className="guest-privacy"><ShieldCheck size={22} aria-hidden="true"/><div><h2>Uso das informações</h2><p>Seu nome e os demais dados informados, incluindo fotos, serão recebidos pela gestão da MOBILIZA FACILITIES para analisar e tratar este registro.</p>
+              <p>Nos pedidos de manutenção e de material, um resumo (tipo, assunto, local, descrição, itens pedidos e protocolo), sem o seu nome nem o seu contato, é enviado ao grupo de WhatsApp da operação. O restante fica privado para a gestão. A avaliação da hospedagem não é enviada a nenhum grupo.</p>
+              <p>Se informar um contato, ele poderá ser usado para retorno sobre este registro. O WhatsApp para avisos é usado só para avisar sobre esta solicitação. Envie apenas os dados necessários e informações que você possa compartilhar.</p>
               <label className="guest-check"><input type="checkbox" required checked={draft.privacy_accepted} onChange={event => edit('privacy_accepted', event.target.checked)}/>
                 <span>Li e concordo com o uso das informações para tratar este registro. <b aria-hidden="true">*</b></span></label></div></div>
           </fieldset>

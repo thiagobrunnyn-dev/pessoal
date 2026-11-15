@@ -4,6 +4,7 @@ import {randomHex,sha256,epoch} from './visit-security';
 import {readServicePhoto} from './service-photo';
 import {SITE_OWNER_ID} from './owner-access';
 import {GUEST_PRIVACY_VERSION,guestUuid,guestToken,parseGuestValues,guestReceipt} from './guest-channel-model';
+import {requestNotices} from './request-notices-runtime';
 export const GUEST_HEADERS={...noCache,'Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive','Cross-Origin-Resource-Policy':'same-origin'};
 export const GUEST_COOKIE='__Host-mobiliza-guest';
 export const GUEST_SESSION_SECONDS=900;
@@ -31,7 +32,9 @@ export async function startGuestSession(request:Request,token:string){
  return {data:{challenge,expires_at:now+GUEST_SESSION_SECONDS},cookie:`${GUEST_COOKIE}=${cookie}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${GUEST_SESSION_SECONDS}`};
 }
 async function session(request:Request,c:any,challenge:string){const cookies=(request.headers.get('cookie')||'').split(';').map(x=>x.trim()).filter(x=>x.startsWith(GUEST_COOKIE+'='));const token=cookies.length===1?cookies[0].slice(GUEST_COOKIE.length+1):'';if(!guestToken.test(token)||!guestToken.test(challenge))throw new RequestError('Reabra o formulário para renovar o envio.',401);const s=await db().prepare('SELECT id FROM guest_channel_sessions WHERE channel_id=? AND channel_revision=? AND token_hash=? AND challenge_hash=? AND expires_at>unixepoch()').bind(c.id,c.revision,await sha256(token),await sha256(challenge)).first<any>();if(!s)throw new RequestError('O formulário expirou. Renove o envio sem apagar os campos.',401);return s;}
-export async function submitGuest(request:Request,token:string,form:FormData){
+// The notices are queued after every confirmed save, replays included, so one is not lost when a first attempt saved the request and stopped there.
+export async function submitGuest(request:Request,token:string,form:FormData){const receipt=await saveGuest(request,token,form);await requestNotices.queueReceived(SITE_OWNER_ID,'guest',receipt.protocol);return receipt;}
+async function saveGuest(request:Request,token:string,form:FormData){
  const c=await guestChannelAccess(token);const allowed=['request_id','challenge','channel_revision','values','photos'];for(const[k]of form)if(!allowed.includes(k)||k!=='photos'&&form.getAll(k).length!==1)throw new RequestError('Envie somente os campos deste formulário.');
  const requestId=form.get('request_id'),challenge=form.get('challenge'),channelRevision=Number(form.get('channel_revision'));if(typeof requestId!=='string'||!guestUuid.test(requestId)||typeof challenge!=='string'||channelRevision!==c.revision)throw new RequestError('O canal foi atualizado. Reabra o formulário.',409);const s=await session(request,c,challenge);
  let input:unknown;try{const raw=form.get('values');if(typeof raw!=='string'||raw.length>14000)throw Error();input=JSON.parse(raw);}catch{throw new RequestError('Confira os dados do formulário.');}const values=parseGuestValues(input);

@@ -4,7 +4,8 @@ import {RequestError} from './http-security';
 
 /**
  * Prazo de retenção. Depois dele são apagados o texto e o remetente das mensagens, o texto dos
- * envios já finalizados e o nome do solicitante das solicitações encerradas.
+ * envios já finalizados, o nome do solicitante das solicitações encerradas e, nos avisos de
+ * solicitação já finalizados, o texto e o número do solicitante.
  */
 export const WHATSAPP_RETENTION_DAYS = 90;
 /** Envio sem confirmação do n8n depois deste prazo vira falha; nunca é reenviado sozinho. */
@@ -44,8 +45,15 @@ export const OUTBOX_LABELS: Record<OutboxStatus, string> = {queued: 'Na fila', s
 export type WhatsappChat = {
   id: string; chat_jid: string; name: string; participants_count: number | null; monitored: number;
   property_id: string | null; property_name: string | null; last_message_at: string | null; revision: number;
+  /** 1 when this is the general group for request notices (lib/request-notices.ts). */
+  requests_default: number;
+  /** 1 when this is the managers' group, where the n8n assistant answers. The panel sends nothing to it. */
+  management_default: number;
   messages_24h: number; open_requests: number;
 };
+/** Roles an administrator gives to a group, one group per owner each; the value is the column that marks it. */
+export const GROUP_ROLES = {requests: 'requests_default', management: 'management_default'} as const;
+export type GroupRole = keyof typeof GROUP_ROLES;
 export type WhatsappMessage = {
   id: string; direction: 'in' | 'out'; sender_name: string | null; kind: MessageKind; body: string | null;
   has_media: number; sent_at: string; purged_at: string | null; category: MessageCategory | null; is_request: number;

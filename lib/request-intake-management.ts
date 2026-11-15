@@ -10,6 +10,8 @@ import {guestUuid,guestText} from './guest-channel-model';
 import {GUEST_HEADERS,hashBytes} from './guest-channel-public';
 import {sha256} from './visit-security';
 import {INTAKE_KINDS,INTAKE_STATUSES} from './request-intake-model';
+import {maskNoticeContact} from './request-notices';
+import {requestNotices} from './request-notices-runtime';
 const missing=()=>new RequestError('Solicitação indisponível neste acesso.',404);
 const conflict=()=>Object.assign(new RequestError('A solicitação ou o acesso mudou. Atualize antes de salvar.',409),{code:'intake_not_saved'});
 const states=new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '));
@@ -28,7 +30,7 @@ async function responsibleOptions(op:Operator){
  });
  return [{id:op.ownerId,name:'Administrador · administrador',revision:0,regional:false},...members];
 }
-function safe(r:any){return {id:r.id,kind:r.kind,protocol:r.protocol,received_at:r.received_at,status:r.status,revision:r.revision,property_id:r.property_id,client_id:r.client_id,cost_center_id:r.cost_center_id,state_code:r.state_code,assigned_at:r.assigned_at,responsible_name:r.responsible_name,responsible_user_id:r.responsible_user_id,linked_order_id:r.linked_order_id,values:JSON.parse(r.values_json)};}
+function safe(r:any){return {id:r.id,kind:r.kind,protocol:r.protocol,received_at:r.received_at,status:r.status,revision:r.revision,property_id:r.property_id,client_id:r.client_id,cost_center_id:r.cost_center_id,state_code:r.state_code,assigned_at:r.assigned_at,responsible_name:r.responsible_name,responsible_user_id:r.responsible_user_id,linked_order_id:r.linked_order_id,values:maskNoticeContact(JSON.parse(r.values_json))};}
 export async function intakeList(op:Operator,q:URLSearchParams){
  await serviceReadGuard(op);const kind=q.get('kind')||'',status=q.get('status')||'',mine=q.get('mine')==='1';
  if(kind&&!Object.hasOwn(INTAKE_KINDS,kind)||status&&!Object.hasOwn(INTAKE_STATUSES,status))throw new RequestError('Filtro inválido.');
@@ -50,7 +52,9 @@ export async function intakeDetail(op:Operator,id:string){
  await serviceReadGuard(op);if(!await first('SELECT id FROM request_intakes WHERE id=? AND owner_id=? AND revision=?',id,op.ownerId,r.revision))throw conflict();
  return {request:{...safe(r),property_name:p?.name||null,scope_changed:scopeChanged,can_triage:!scopeChanged,can_assign:global},events,files,orders,catalogs};
 }
-export async function triageIntake(op:Operator,v:any){
+// A saved (or replayed) close queues the closing notices; the notice module ignores every other action and never throws.
+export const triageIntake:typeof applyIntakeTriage=async(op,v)=>{const result=await applyIntakeTriage(op,v);if(v.action==='close')await requestNotices.queueClosed(op.ownerId,'intake',result.id,result.revision);return result;};
+async function applyIntakeTriage(op:Operator,v:any){
  await serviceReadGuard(op);
  const fields=['id','revision','action','note','order_id','request_id','confirmed','property_id','client_id','cost_center_id','state_code','responsible_user_id'];
  if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).some(k=>!fields.includes(k))||!guestUuid.test(v.id)||!guestUuid.test(v.request_id)||!Number.isSafeInteger(v.revision)||v.revision<1||!['assign','responsible','review','approve_purchase','close','reopen','link_order'].includes(v.action)||v.confirmed!==true)throw new RequestError('Confira e confirme a atualização.');

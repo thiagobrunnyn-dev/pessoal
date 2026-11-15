@@ -4,9 +4,10 @@
 
 import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
 import {ArrowLeft, ClipboardList, MessageCircle, RefreshCw, Send, Users, X} from 'lucide-react';
+import {NOTICE_EVENT_LABELS, NOTICE_STATUS_LABELS, NOTICE_TARGET_LABELS, type RequestNoticeItem} from '../../lib/request-notices';
 import {
   CATEGORY_LABELS, OUTBOX_LABELS, SENTIMENT_LABELS, STATUS_LABELS, URGENCY_LABELS,
-  type RequestStatus, type WhatsappChat, type WhatsappMessage, type WhatsappOutboxItem, type WhatsappRequest, type WhatsappSummary,
+  type GroupRole, type RequestStatus, type WhatsappChat, type WhatsappMessage, type WhatsappOutboxItem, type WhatsappRequest, type WhatsappSummary,
 } from '../../lib/whatsapp';
 import './whatsapp.css';
 import './whatsapp.dark.css';
@@ -15,8 +16,28 @@ type Totals = {monitored_chats: number; messages_today: number; open_requests: n
 type Overview = {chats: WhatsappChat[]; chats_limited: boolean; totals: Totals; summaries: WhatsappSummary[]; properties: {id: string; name: string}[]; can_manage: boolean; retention_days: number; today: string};
 type ChatData = {chat: WhatsappChat; messages: WhatsappMessage[]; has_more: boolean; requests: WhatsappRequest[]; summaries: WhatsappSummary[]; can_manage: boolean};
 type RequestsData = {requests: WhatsappRequest[]; limited: boolean};
-type OutboxData = {items: WhatsappOutboxItem[]};
+type OutboxData = {items: WhatsappOutboxItem[]; notices: RequestNoticeItem[]};
 type Tab = 'overview' | 'chats' | 'requests' | 'outbox';
+// The two roles an administrator gives to a group, with the texts of their controls.
+const GROUP_ROLE_TEXT: Record<GroupRole, {badge: string; on: string; off: string; help: string; confirm: string; given: string; taken: string}> = {
+  requests: {
+    badge: 'Grupo geral de solicitações', on: 'Usar como grupo geral de solicitações', off: 'Deixar de usar como grupo geral',
+    help: 'O grupo geral recebe os avisos das solicitações cujo imóvel não tem grupo vinculado. Só um grupo tem essa função.',
+    confirm: 'Usar este grupo como grupo geral de solicitações? Ele passa a receber os avisos das solicitações cujo imóvel não tem grupo. Se outro grupo tinha essa função, deixa de ter.',
+    given: 'Grupo geral de solicitações definido.', taken: 'Este grupo deixou de ser o grupo geral de solicitações.',
+  },
+  management: {
+    badge: 'Gestão', on: 'Usar como grupo da gestão (assistente Mobi)', off: 'Deixar de usar como grupo da gestão',
+    help: 'O grupo da gestão é onde o assistente Mobi conversa com os gestores. O painel não envia nada sozinho para ele, e não é preciso acompanhá-lo. Só um grupo tem essa função.',
+    confirm: 'Usar este grupo como grupo da gestão? O assistente Mobi passa a responder nele. Se outro grupo tinha essa função, deixa de ter.',
+    given: 'Grupo da gestão definido.', taken: 'Este grupo deixou de ser o grupo da gestão.',
+  },
+};
+const chatRoles = (chat: WhatsappChat): GroupRole[] => [...(chat.requests_default ? ['requests' as const] : []), ...(chat.management_default ? ['management' as const] : [])];
+function RoleBadges({chat}: {chat: WhatsappChat}) {
+  const roles = chatRoles(chat);
+  return roles.length ? <p className="wa-topics">{roles.map(role => <span key={role} className="pill neutral">{GROUP_ROLE_TEXT[role].badge}</span>)}</p> : null;
+}
 
 const errorText = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
@@ -145,7 +166,7 @@ function ChatsPanel({data, onOpenChat}: {data: Overview; onOpenChat: (id: string
     {!data.chats.length ? <div className="empty"><h3>Nenhum grupo sincronizado</h3><p>Ative o fluxo “Central WhatsApp · Sincronizar grupos” no n8n para listar os grupos da conta.</p></div>
       : !chats.length ? <p className="muted">Nenhum grupo neste filtro.</p>
         : chats.map(chat => <article key={chat.id} className="wa-item">
-          <div className="section-heading"><div><h3>{chat.name}</h3><p className="muted">{[chat.property_name, chat.participants_count ? chat.participants_count + ' participantes' : '', chat.last_message_at ? 'última mensagem ' + dateTime(chat.last_message_at) : ''].filter(Boolean).join(' · ') || 'Sem mensagens registradas'}</p></div><span className={'pill ' + (chat.monitored ? 'ok' : 'neutral')}>{chat.monitored ? 'Acompanhado' : 'Não registrado'}</span></div>
+          <div className="section-heading"><div><h3>{chat.name}</h3><p className="muted">{[chat.property_name, chat.participants_count ? chat.participants_count + ' participantes' : '', chat.last_message_at ? 'última mensagem ' + dateTime(chat.last_message_at) : ''].filter(Boolean).join(' · ') || 'Sem mensagens registradas'}</p><RoleBadges chat={chat}/></div><span className={'pill ' + (chat.monitored ? 'ok' : 'neutral')}>{chat.monitored ? 'Acompanhado' : 'Não registrado'}</span></div>
           <div className="form-actions"><button type="button" className="button secondary" onClick={() => onOpenChat(chat.id)}>{chat.monitored ? 'Abrir conversa' : 'Configurar'}</button>{chat.monitored ? <span className="muted">{count(chat.messages_24h, 'mensagem', 'mensagens')} em 24 h · {count(chat.open_requests, 'solicitação aberta', 'solicitações abertas')}</span> : null}</div>
         </article>)}
   </section>;
@@ -185,8 +206,13 @@ function ChatPanel({id, properties, onClose, onDone}: {id: string; properties: {
     if (await run({action: 'send', chat_id: id, body: text, request_id: requestId.current}, 'Mensagem colocada na fila de envio.')) {setText(''); requestId.current = '';}
   }
   const chat = data?.chat;
+  function toggleRole(role: GroupRole, enabled: boolean, revision: number) {
+    const text = GROUP_ROLE_TEXT[role];
+    if (enabled && !window.confirm(text.confirm)) return;
+    void run({action: 'group_role', chat_id: id, role, enabled, expected_revision: revision}, enabled ? text.given : text.taken);
+  }
   return <section className="panel wa-chat" aria-busy={loading}>
-    <div className="section-heading"><div><h2 ref={heading} tabIndex={-1}>{chat?.name || 'Grupo'}</h2>{chat && <p className="muted">{[chat.property_name, chat.participants_count ? chat.participants_count + ' participantes' : ''].filter(Boolean).join(' · ')}</p>}</div><button type="button" className="button secondary" aria-label="Fechar grupo" onClick={onClose}><X size={18}/></button></div>
+    <div className="section-heading"><div><h2 ref={heading} tabIndex={-1}>{chat?.name || 'Grupo'}</h2>{chat && <p className="muted">{[chat.property_name, chat.participants_count ? chat.participants_count + ' participantes' : ''].filter(Boolean).join(' · ')}</p>}{chat && <RoleBadges chat={chat}/>}</div><button type="button" className="button secondary" aria-label="Fechar grupo" onClick={onClose}><X size={18}/></button></div>
     {error && <p className="error" role="alert">{error}</p>}
     {failure && <p className="error" role="alert">{failure}</p>}
     {!data || !chat ? <p role="status">{loading ? 'Carregando grupo…' : 'Grupo indisponível.'}</p> : <>
@@ -199,7 +225,14 @@ function ChatPanel({id, properties, onClose, onDone}: {id: string; properties: {
           <label className="confirm"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)}/><span>Os participantes foram avisados de que as mensagens deste grupo serão registradas e analisadas pela gestão.</span></label>
           <button type="button" className="button" disabled={!consent} onClick={() => void run({action: 'monitor', chat_id: id, monitored: true, confirmed: true, expected_revision: chat.revision}, 'Grupo passou a ser acompanhado.')}>Acompanhar este grupo</button>
         </>}
-        <label className="field"><span>Imóvel relacionado (opcional)</span><select value={chat.property_id || ''} onChange={event => void run({action: 'link_property', chat_id: id, property_id: event.target.value || null, expected_revision: chat.revision}, 'Imóvel do grupo atualizado.')}><option value="">Nenhum</option>{properties.map(property => <option key={property.id} value={property.id}>{property.name}</option>)}</select></label>
+        <label className="field"><span>Imóvel relacionado (opcional)</span><select value={chat.property_id || ''} onChange={event => void run({action: 'link_property', chat_id: id, property_id: event.target.value || null, expected_revision: chat.revision}, 'Imóvel do grupo atualizado.')}><option value="">Nenhum</option>{properties.map(property => <option key={property.id} value={property.id}>{property.name}</option>)}</select><small>Os avisos das solicitações deste imóvel são enviados a este grupo.</small></label>
+        {(['requests', 'management'] as const).map(role => {
+          const active = role === 'requests' ? !!chat.requests_default : !!chat.management_default;
+          return <div key={role}>
+            <p className="muted">{GROUP_ROLE_TEXT[role].help}</p>
+            <div className="form-actions"><button type="button" className="button secondary" onClick={() => toggleRole(role, !active, chat.revision)}>{active ? GROUP_ROLE_TEXT[role].off : GROUP_ROLE_TEXT[role].on}</button></div>
+          </div>;
+        })}
       </fieldset>}
       {!!data.requests.length && <><h3>Solicitações deste grupo</h3>{data.requests.map(request => <RequestCard key={request.id} request={request} onDone={message => {onDone(message); reload();}}/>)}</>}
       {!!data.summaries.length && <details className="wa-details"><summary>Resumos diários ({data.summaries.length})</summary>{data.summaries.map(summary => <SummaryCard key={summary.id} summary={summary}/>)}</details>}
@@ -287,18 +320,35 @@ function OutboxPanel({onDone}: {onDone: (message: string) => void}) {
       setBusy('');
     }
   }
-  return <section className="panel" aria-busy={loading}>
-    <div className="section-heading"><h2>Envios</h2><button type="button" className="button secondary" disabled={loading} onClick={reload}><RefreshCw size={16}/>Atualizar</button></div>
-    <p className="muted">Mensagens escritas no painel. O n8n retira da fila a cada minuto; um envio sem confirmação em 10 minutos é marcado como falha e não é repetido sozinho. O texto dos envios finalizados é apagado após 90 dias.</p>
-    {error && <p className="error" role="alert">{error}</p>}
-    {failure && <p className="error" role="alert">{failure}</p>}
-    {!data ? <p role="status">{loading ? 'Carregando envios…' : 'Lista indisponível.'}</p>
-      : !data.items.length ? <div className="empty"><h3>Nenhum envio registrado</h3><p>Abra um grupo acompanhado para escrever uma mensagem.</p></div>
-        : data.items.map(item => <article key={item.id} className="wa-item">
-          <div className="section-heading"><div><h3>{item.chat_name}</h3><p className="muted">{item.created_by_name} · {dateTime(item.created_at)}{item.sent_at ? ' · enviada ' + dateTime(item.sent_at) : ''}</p></div><span className={'pill ' + outboxPill[item.status]}>{OUTBOX_LABELS[item.status]}</span></div>
-          <p className="wa-text">{item.purged_at ? 'Texto apagado pelo prazo de retenção.' : item.body}</p>
-          {item.error && <p className="error">{item.error}</p>}
-          {item.status === 'queued' && <div className="form-actions"><button type="button" className="button secondary" disabled={!!busy} onClick={() => void cancel(item.id)}>Cancelar envio</button></div>}
-        </article>)}
+  return <>
+    <section className="panel" aria-busy={loading}>
+      <div className="section-heading"><h2>Envios</h2><button type="button" className="button secondary" disabled={loading} onClick={reload}><RefreshCw size={16}/>Atualizar</button></div>
+      <p className="muted">Mensagens escritas no painel. O n8n retira da fila a cada minuto; um envio sem confirmação em 10 minutos é marcado como falha e não é repetido sozinho. O texto dos envios finalizados é apagado após 90 dias.</p>
+      {error && <p className="error" role="alert">{error}</p>}
+      {failure && <p className="error" role="alert">{failure}</p>}
+      {!data ? <p role="status">{loading ? 'Carregando envios…' : 'Lista indisponível.'}</p>
+        : !data.items.length ? <div className="empty"><h3>Nenhum envio registrado</h3><p>Abra um grupo acompanhado para escrever uma mensagem.</p></div>
+          : data.items.map(item => <article key={item.id} className="wa-item">
+            <div className="section-heading"><div><h3>{item.chat_name}</h3><p className="muted">{item.created_by_name} · {dateTime(item.created_at)}{item.sent_at ? ' · enviada ' + dateTime(item.sent_at) : ''}</p></div><span className={'pill ' + outboxPill[item.status]}>{OUTBOX_LABELS[item.status]}</span></div>
+            <p className="wa-text">{item.purged_at ? 'Texto apagado pelo prazo de retenção.' : item.body}</p>
+            {item.error && <p className="error">{item.error}</p>}
+            {item.status === 'queued' && <div className="form-actions"><button type="button" className="button secondary" disabled={!!busy} onClick={() => void cancel(item.id)}>Cancelar envio</button></div>}
+          </article>)}
+    </section>
+    {data && <NoticesPanel notices={data.notices}/>}
+  </>;
+}
+
+/** Read-only list of the automatic request notices. The number of a requester only ever arrives masked. */
+function NoticesPanel({notices}: {notices: RequestNoticeItem[]}) {
+  return <section className="panel">
+    <div className="section-heading"><h2>Avisos de solicitações</h2></div>
+    <p className="muted">Mensagens automáticas de quando uma solicitação é registrada e de quando é encerrada: para o grupo do imóvel (ou o grupo geral) e para o solicitante que autorizou. Saem pela mesma fila do n8n e não são repetidas sozinhas. O texto e o número do solicitante são apagados após 90 dias.</p>
+    {!notices.length ? <div className="empty"><h3>Nenhum aviso registrado</h3><p>Os avisos aparecem aqui quando houver um grupo do imóvel, um grupo geral ou um WhatsApp autorizado pelo solicitante.</p></div>
+      : notices.map(notice => <article key={notice.id} className="wa-item">
+        <div className="section-heading"><div><h3>{notice.protocol} · {NOTICE_EVENT_LABELS[notice.event]}</h3><p className="muted">{NOTICE_TARGET_LABELS[notice.target]}: {notice.target === 'group' ? notice.chat_name || 'não encontrado' : notice.requester || 'número não guardado'} · {dateTime(notice.created_at)}{notice.sent_at ? ' · enviado ' + dateTime(notice.sent_at) : ''}</p></div><span className={'pill ' + outboxPill[notice.status]}>{NOTICE_STATUS_LABELS[notice.status]}</span></div>
+        {notice.error && <p className="error">{notice.error}</p>}
+        <div className="form-actions"><a className="button secondary" href={'/solicitacoes?' + (notice.source === 'intake' ? 'request_id=' : 'id=') + encodeURIComponent(notice.source_id)}>Ver solicitação</a></div>
+      </article>)}
   </section>;
 }
