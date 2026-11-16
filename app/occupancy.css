@@ -14,7 +14,7 @@
 .occ-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
 .occ-stat{display:grid;grid-template-columns:1fr auto;align-content:start;gap:8px 10px;padding:18px;border-radius:10px;background:#f8fafb;border:1px solid #e8edef;min-width:0}
 .occ-stat>svg{grid-column:2;grid-row:1;color:var(--orange,#ed641a);flex-shrink:0}
-.occ-stat>strong{grid-column:1;grid-row:1;font-size:28px;line-height:1.2;color:var(--navy,#1a3548);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.occ-stat>strong{grid-column:1;grid-row:1;font-size:28px;line-height:1.2;color:var(--navy);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .occ-stat>strong.occ-stat-text{font-size:18px;line-height:1.4}
 .occ-stat>span{grid-column:1/-1;font-size:13px;line-height:1.45;color:#667783}
 .occ-help,.occ-footnote{color:var(--muted,#667783);font-size:13px;line-height:1.65;overflow-wrap:anywhere}
