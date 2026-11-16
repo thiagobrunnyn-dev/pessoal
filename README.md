@@ -20,6 +20,10 @@ O sistema tem dois visuais, escuro (padrão) e claro. A escolha fica no cookie `
 
 As folhas `*.dark.css` são geradas a partir das folhas claras por `scripts/build-dark-theme.mjs`: depois de alterar cores em um `.css`, rode `npm run theme:dark`. O teste `tests/app-theme.cjs` falha se alguma estiver desatualizada. Ajustes manuais do tema e os tokens ficam em `app/theme.css`.
 
+## Vídeos de ajuda
+
+O botão "Ver como funciona", no cabeçalho das telas internas, abre um vídeo curto sobre a tela atual e lista os demais. A lista, com a tela de cada vídeo, fica em `lib/help-videos.ts`; o botão e a janela, em `app/components/help-video.tsx`. Os arquivos ficam em `public/ajuda` (MP4 em H.264 e AAC, com o índice no início, até 3 MB cada) e são públicos: grave somente telas com dados fictícios. Para trocar um vídeo, substitua o arquivo e ajuste a duração na lista; `tests/help-videos.cjs` confere a lista, os arquivos e a presença do botão.
+
 ## Acesso da equipe
 
 Para configurar o login próprio, defina no ambiente do servidor `MOBILIZA_SUPABASE_AUTH=1`, `MOBILIZA_SUPABASE_URL`, `MOBILIZA_SUPABASE_PUBLISHABLE_KEY` e `MOBILIZA_SUPABASE_OWNER_ID` com o UID do primeiro administrador no Supabase. O identificador do proprietário da aplicação em `lib/owner-access.ts` deve corresponder ao ambiente em uso. A variável opcional `MOBILIZA_SUPABASE_MEMBERS` vincula UIDs do Supabase a contas legadas.

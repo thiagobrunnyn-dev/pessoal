@@ -5,7 +5,7 @@
 :root[data-theme=dark] .occ-section-heading p{color:var(--muted,#92a7b8)}
 :root[data-theme=dark] .occ-stat{background-color:#132332;border-color:#203648}
 :root[data-theme=dark] .occ-stat>svg{color:var(--orange,#ff8a3d)}
-:root[data-theme=dark] .occ-stat>strong{color:var(--navy,#e9f0f5)}
+:root[data-theme=dark] .occ-stat>strong{color:#e9f0f5}
 :root[data-theme=dark] .occ-stat>span{color:#92a7b8}
 :root[data-theme=dark] .occ-help,:root[data-theme=dark] .occ-footnote{color:var(--muted,#92a7b8)}
 :root[data-theme=dark] .occ-footnote{border-top-color:#22394c}

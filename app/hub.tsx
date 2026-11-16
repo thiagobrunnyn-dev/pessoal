@@ -6,6 +6,7 @@ import HubCharts from './components/hub-charts';
 import HubFilters from './components/hub-filters';
 import {HubRing,HubSegments} from './components/hub-visuals';
 import PasswordSignOut from './components/password-sign-out';
+import HelpVideoButton from './components/help-video';
 import ThemeToggle from './components/theme-toggle';
 import {FILTER_KEYS,EMPTY_FILTERS,parseOperationFilters,operationFilterQuery,changeOperationFilter,type FilterKey,type OperationFilterOptions} from '../lib/operation-filter-values';
 import {useEffect,useState,useRef} from 'react';
@@ -34,7 +35,7 @@ export default function Hub({displayName,accessTitle='Sócio-administrador',canM
  ] as const;
 
  return <div className="hub-workspace">
-  <header className="hub-compact-header no-print"><HubNavigation displayName={displayName} accessTitle={accessTitle} regional={regional}/><a className="hub-mobile-brand" href="/" aria-label="MOBILIZA GESTÃO, visão geral"><img src="/icons/symbol-192-v54.png" width={36} height={36} alt=""/><span>MOBILIZA GESTÃO</span></a><div className="hub-header-options"><span className="hub-header-label">Mobiliza Facilities</span><ThemeToggle/>{passwordSession&&<PasswordSignOut/>}<AdminMenu compact canManageAccess={canManageAccess} canManageCatalog={!regional}/></div></header>
+  <header className="hub-compact-header no-print"><HubNavigation displayName={displayName} accessTitle={accessTitle} regional={regional}/><a className="hub-mobile-brand" href="/" aria-label="MOBILIZA GESTÃO, visão geral"><img src="/icons/symbol-192-v54.png" width={36} height={36} alt=""/><span>MOBILIZA GESTÃO</span></a><div className="hub-header-options"><span className="hub-header-label">Mobiliza Facilities</span><HelpVideoButton/><ThemeToggle/>{passwordSession&&<PasswordSignOut/>}<AdminMenu compact canManageAccess={canManageAccess} canManageCatalog={!regional}/></div></header>
   <main className="hub-compact-main"><section className="hub-intro"><div><div className="eyebrow">MOBILIZA GESTÃO</div><h1>Visão Geral da Operação</h1><p>{regional?'Imóveis, hospedagem e serviços do Pará.':'Imóveis, hospedagem e serviços.'}</p></div><div className="hub-intro-actions"><span className={'hub-live'+(loading?' is-busy':data?'':' is-off')}><i aria-hidden="true"/>{loading?'Atualizando…':data?'Atualizado às '+displayTime(data.asOf):'Sem leitura'}</span><a className="button" href="/hoje"><CalendarDays size={18}/>Tarefas de hoje</a><button type="button" className="button secondary" disabled={loading} onClick={()=>{void refresh(query);setReloadKey(k=>k+1);}}><RefreshCw size={17} className={loading?'spin':''}/>{loading?'Atualizando…':'Atualizar'}</button></div></section>
   <HubFilters hasQuery={!!query} filters={filters} options={options} loading={loading} onChange={selectFilter} onClear={()=>updateQuery('')}/>
   {error&&<p className="error" role="alert">{error}</p>}
