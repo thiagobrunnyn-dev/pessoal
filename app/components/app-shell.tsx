@@ -3,6 +3,7 @@ import type {ReactNode} from 'react';
 import AdminMenu from './admin-menu';
 import HubNavigation from './hub-navigation';
 import PasswordSignOut from './password-sign-out';
+import HelpVideoButton from './help-video';
 import ThemeToggle from './theme-toggle';
 import '../hub.css';
 import '../hub-theme.css';
@@ -29,6 +30,7 @@ export default function AppShell({displayName, accessTitle, canManageAccess, pas
         <div className="hub-header-options">
           <span className="hub-header-label">Mobiliza Facilities</span>
           {passwordSession && <PasswordSignOut/>}
+          <HelpVideoButton/>
           <ThemeToggle/>
           <AdminMenu compact canManageAccess={canManageAccess} canManageCatalog={!regional}/>
         </div>
