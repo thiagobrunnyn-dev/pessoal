@@ -121,8 +121,11 @@ export function maskWhatsapp(value: unknown): string {
   if (typeof value !== 'string') return '';
   const digits = value.replace(/@.*$/, '').replace(/\D/g, '');
   const national = digits.length > 11 && digits.startsWith('55') ? digits.slice(2) : digits;
-  if (national.length !== 10 && national.length !== 11) return '';
-  return '(••) ' + '•'.repeat(national.length - 6) + '-' + national.slice(-4);
+  if (national.length === 10 || national.length === 11) {
+    return '(••) ' + '•'.repeat(national.length - 6) + '-' + national.slice(-4);
+  }
+  // Direct chats may use international E.164 numbers. Keep only the last four digits.
+  return /^[1-9]\d{9,14}$/.test(digits) ? '••••-' + digits.slice(-4) : '';
 }
 
 /** Copy of a stored form payload with the WhatsApp number masked, for management screens and the API. */

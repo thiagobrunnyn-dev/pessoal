@@ -287,3 +287,25 @@ test('receipt queue failure preserves the request and replay queues exactly one 
   const receipts = sqlite.prepare('SELECT target,requester_jid FROM request_notices WHERE protocol=?').all(saved.protocol);
   assert.deepEqual(receipts.map(row => ({...row})), [{target: 'requester', requester_jid: sender}]);
 });
+
+test('international receipts retain a masked destination in the Central without exposing the phone', async () => {
+  // A synthetic, non-routable national part exercises a 12-digit international identifier.
+  const internationalSender = '595000000001@c.us';
+  const body = {...create(), sender: internationalSender, messageId: `false_${internationalSender}_${randomUUID()}`};
+  const created = await call(body);
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const {requestNotices} = load('lib/request-notices-runtime.ts');
+  const notice = (await requestNotices.list(ownerOperator.ownerId))
+    .find(row => row.protocol === created.data.protocol);
+  assert.ok(notice);
+  assert.equal(notice.requester, '••••-0001');
+  assert.equal(notice.target, 'requester');
+  assert.ok(!JSON.stringify(notice).includes('595000000001'));
+  const stored = sqlite.prepare('SELECT requester_jid FROM request_notices WHERE protocol=?').get(created.data.protocol);
+  assert.equal(stored.requester_jid, internationalSender);
+  const {maskWhatsapp} = load('lib/request-notices.ts');
+  assert.equal(maskWhatsapp('123456789012345@c.us'), '••••-2345');
+  for (const invalid of ['123456789@c.us', '1'.repeat(16), 'not a number', null]) {
+    assert.equal(maskWhatsapp(invalid), '');
+  }
+});
