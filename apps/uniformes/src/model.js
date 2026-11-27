@@ -28,7 +28,32 @@ export function act(state,input,mode,now){
  else if(type==='destination'){find(s.companies,input.companyId,'Empresa');const x={id:newId('DEST'),companyId:input.companyId,city:text(input.city,'Cidade'),lodging:text(input.lodging,'Destino/alojamento'),block:optional(input.block,40),room:optional(input.room,40)};s.destinations.push(x);message='Destino cadastrado';result={id:x.id}}
  else if(type==='person'){find(s.companies,input.companyId,'Empresa');const d=find(s.destinations,input.destinationId,'Destino');if(d.companyId!==input.companyId)fail('O destino não pertence a essa empresa.');const mat=text(input.mat,'Matrícula',40);if(s.people.some(x=>x.companyId===input.companyId&&x.mat.toLowerCase()===mat.toLowerCase()))fail('Matrícula já cadastrada nesta empresa.');const x={id:newId('P'),companyId:input.companyId,destinationId:d.id,name:text(input.name,'Nome'),mat};s.people.push(x);message='Colaborador cadastrado';result={id:x.id}}
  else if(type==='piece'){const p=find(s.people,input.owner,'Colaborador');if(!['Camisa','Calça'].includes(input.pieceType))fail('Tipo de peça inválido.');const x={id:newId('U'),owner:p.id,companyId:p.companyId,type:input.pieceType};s.pieces.push(x);message='Peça cadastrada com código permanente';result={id:x.id}}
- else if(type==='rol'){const p=find(s.people,input.owner,'Colaborador'),d=find(s.destinations,p.destinationId,'Destino'),c=find(s.companies,p.companyId,'Empresa');const shirts=num(input.shirts,'Camisas'),pants=num(input.pants,'Calças');if(shirts+pants<1)fail('Declare pelo menos uma peça.');const collected=collectionDate(input.date),deadline=returnDeadline(input.triageDate),collectedTime=collectionTime(input.collectionTime);if(deadline.triageDate<collected)fail('O início da triagem não pode ser anterior à data da coleta.');const x={id:newId('ROL'),owner:p.id,companyId:p.companyId,date:collected,collectionTime:collectedTime,...deadline,expected:{Camisa:shirts,'Calça':pants},records:[],notes:optional(input.notes),events:[{time:now,message:'Rol criado. Aguardando entrada física.'}],dispatched:false,snapshot:{...d,name:p.name,mat:p.mat,company:c.name}};s.rols.push(x);message='Rol criado';result={id:x.id}}
+ else if(type==='rol'){
+  const person=find(s.people,input.owner,'Colaborador');
+  const destination=find(s.destinations,person.destinationId,'Destino');
+  const company=find(s.companies,person.companyId,'Empresa');
+  const shirts=num(input.shirts,'Camisas'),pants=num(input.pants,'Calças');
+  if(shirts+pants<1)fail('Declare pelo menos uma peça.');
+
+  const collected=collectionDate(input.date);
+  const deadline=returnDeadline(input.triageDate);
+  const collectedTime=collectionTime(input.collectionTime);
+  const collectionAt=`${collected}T${collectedTime||'00:00'}:00-03:00`;
+  if(Date.parse(deadline.triageStartAt)<Date.parse(collectionAt)){
+   fail('A triagem não pode começar antes da coleta. Se a coleta for após as 09:00, escolha um dia posterior para a triagem.');
+  }
+
+  const rol={
+   id:newId('ROL'),owner:person.id,companyId:person.companyId,
+   date:collected,collectionTime:collectedTime,...deadline,
+   expected:{Camisa:shirts,'Calça':pants},records:[],notes:optional(input.notes),
+   events:[{time:now,message:'Rol criado. Aguardando entrada física.'}],dispatched:false,
+   snapshot:{...destination,name:person.name,mat:person.mat,company:company.name},
+  };
+  s.rols.push(rol);
+  message='Rol criado';
+  result={id:rol.id};
+ }
  else if(['entry','exit','wash','ready','dispatch'].includes(type)){
   const r=find(s.rols,input.rolId,'Rol');if(r.dispatched)fail('Este rol já foi enviado.');const total=Object.values(r.expected).reduce((a,b)=>a+b,0);
   if(type==='entry'||type==='exit'){const code=text(input.code,'Código',64).toUpperCase();const p=find(s.pieces,code,'Código de peça');if(p.owner!==r.owner||p.companyId!==r.companyId)fail('Peça de outro colaborador ou empresa. Conferência bloqueada.');const old=r.records.find(x=>x.id===code);
