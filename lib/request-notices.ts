@@ -233,14 +233,14 @@ export type NoticeRequest = {
  * labelled as informed by the requester and passed through declaredText. Neither carries the
  * requester's identity or the closing note.
  */
-export function noticeBody(event: NoticeEvent, target: NoticeTarget, request: NoticeRequest): string {
+export function noticeBody(event: NoticeEvent, target: NoticeTarget, request: NoticeRequest, notifyOnClose = true): string {
   const property = plainLine(request.property, PROPERTY_LENGTH), subject = plainLine(request.subject, SUBJECT_LENGTH);
   const facts = [`Protocolo: *${plainLine(request.protocol, 40)}*`, 'Tipo: ' + request.kind, ...(subject ? ['Assunto: ' + subject] : []), ...(property ? ['Imóvel: ' + property] : [])];
   const dates = ['Recebida em ' + noticeDate(request.receivedAt), ...(event === 'closed' ? ['Encerrada em ' + noticeDate(request.closedAt || '')] : [])];
   const footer = '_Horário de Belém._';
   if (target === 'requester') {
     return event === 'received'
-      ? ['*MOBILIZA FACILITIES*', 'Recebemos a sua solicitação.', '', ...facts, ...dates, '', 'Você receberá outro aviso por aqui quando o atendimento for encerrado.', footer].join('\n')
+      ? ['*MOBILIZA FACILITIES*', 'Recebemos a sua solicitação.', '', ...facts, ...dates, ...(notifyOnClose ? ['', 'Você receberá outro aviso por aqui quando o atendimento for encerrado.'] : []), footer].join('\n')
       : ['*MOBILIZA FACILITIES*', 'O atendimento da sua solicitação foi encerrado.', '', ...facts, ...dates, footer].join('\n');
   }
   const place = declaredText(request.declaredPlace, PLACE_LENGTH);

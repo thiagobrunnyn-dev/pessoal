@@ -330,6 +330,13 @@
       "when": 1794656007383,
       "tag": "0046_request_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1794761417825,
+      "tag": "0047_whatsapp_request_agent",
+      "breakpoints": true
     }
   ]
 }
