@@ -1,5 +1,5 @@
 import {sql} from 'drizzle-orm';
-import { sqliteTable, text, integer, index, real, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, real, uniqueIndex, check, primaryKey } from 'drizzle-orm/sqlite-core';
 export const properties = sqliteTable('properties', { id:text('id').primaryKey(),propertyType:text('property_type'),propertyLevel:text('property_level'),declaredSlots:integer('declared_slots'),caretakerProfileId:text('caretaker_profile_id'),bedrooms:integer('bedrooms'),bathrooms:integer('bathrooms'),frontPhotoAssetId:text('front_photo_asset_id'),archivedAt:text('archived_at'),archiveEventId:text('archive_event_id'), ownerId:text('owner_id').notNull(),revision:integer('revision').notNull().default(0),lastCorrectionId:text('last_correction_id'), name:text('name').notNull(), address:text('address').notNull(), stateCode:text('state_code'),worksiteId:text('worksite_id'),controlNumber:integer('control_number'), createdAt:text('created_at').notNull() }, t=>[index('idx_properties_owner').on(t.ownerId),uniqueIndex('idx_properties_control_number').on(t.controlNumber),index('idx_properties_worksite').on(t.worksiteId)]);
 export const equipment = sqliteTable('equipment', { id:text('id').primaryKey(),publicHistoryEnabled:integer('public_history_enabled').notNull().default(1),publicHistoryRevision:integer('public_history_revision').notNull().default(0),archivedAt:text('archived_at'),archiveEventId:text('archive_event_id'), ownerId:text('owner_id').notNull(), propertyId:text('property_id').notNull().references(()=>properties.id), name:text('name').notNull(), location:text('location').notNull(), brandModel:text('brand_model').notNull().default(''), serial:text('serial').notNull().default(''), identificationPhotoKey:text('identification_photo_key'), identificationPhotoType:text('identification_photo_type'), identificationPhotoSize:integer('identification_photo_size'), identificationPhotoCreatedAt:text('identification_photo_created_at'), baselineDate:text('baseline_date'), checklist:text('checklist').notNull().default('[]'),revision:integer('revision').notNull().default(0),lastChangeId:text('last_change_id'), createdAt:text('created_at').notNull() },t=>[index('idx_equipment_owner').on(t.ownerId),index('idx_equipment_property').on(t.propertyId)]);
 export const visitGrants=sqliteTable('visit_grants',{id:text('id').primaryKey(),personProfileId:text('person_profile_id'),ownerId:text('owner_id').notNull(),equipmentId:text('equipment_id').notNull().references(()=>equipment.id),technicianName:text('technician_name').notNull(),codeHash:text('code_hash').notNull(),codeSalt:text('code_salt').notNull(),createdAt:integer('created_at').notNull(),codeExpiresAt:integer('code_expires_at').notNull(),expiresAt:integer('expires_at').notNull(),revokedAt:integer('revoked_at'),redeemedAt:integer('redeemed_at'),redeemedSessionId:text('redeemed_session_id')},t=>[index('idx_visit_grants_equipment').on(t.equipmentId,t.createdAt)]);
@@ -355,4 +355,16 @@ export const requestNotices = sqliteTable('request_notices', {
   check('request_notice_event', sql`${table.event} IN ('received','closed')`),
   check('request_notice_target', sql`(${table.target} = 'group' AND ${table.chatId} IS NOT NULL AND ${table.requesterJid} IS NULL) OR (${table.target} = 'requester' AND ${table.chatId} IS NULL)`),
   check('request_notice_status', sql`${table.status} IN ('queued','sending','sent','failed','cancelled')`),
+]);
+
+export const requestAgentIntakes = sqliteTable('request_agent_intakes', {
+  ownerId: text('owner_id').notNull(),
+  session: text('session').notNull(),
+  eventHash: text('event_hash').notNull(),
+  senderHash: text('sender_hash').notNull(),
+  intakeId: text('intake_id').notNull().unique().references(() => requestIntakes.id),
+  requestFingerprint: text('request_fingerprint').notNull(),
+  createdAt: text('created_at').notNull(),
+}, table => [
+  primaryKey({columns: [table.ownerId, table.session, table.eventHash]}),
 ]);

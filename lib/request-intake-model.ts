@@ -2,6 +2,7 @@ import {RequestError} from './http-security';
 import {guestText} from './guest-channel-model';
 import {readNoticeContact} from './request-notices';
 export const INTAKE_PRIVACY_VERSION='general-requests-v2';
+export const INTAKE_WHATSAPP_PRIVACY_VERSION='whatsapp-agent-v1';
 export const INTAKE_KINDS={maintenance:'Solicitação de manutenção',purchase:'Pedido de compra'} as const;
 export const INTAKE_STATUSES={received:'Recebida',reviewing:'Em análise',linked_order:'Encaminhada para OS',approved:'Compra aprovada pela gestão',closed:'Encerrada'} as const;
 export type IntakeKind=keyof typeof INTAKE_KINDS;

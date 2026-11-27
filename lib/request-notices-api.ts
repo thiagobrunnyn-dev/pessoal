@@ -12,6 +12,7 @@ import {
   type NoticeEvent, type NoticeItem, type NoticeRequest, type NoticeSource, type NoticeStatus, type NoticeTarget, type RequestNoticeItem,
 } from './request-notices';
 import {WHATSAPP_SEND_TIMEOUT_MINUTES} from './whatsapp';
+import {INTAKE_WHATSAPP_PRIVACY_VERSION} from './request-intake-model';
 
 export type NoticeGuard = {sql: string; args: unknown[]};
 export type RequestNoticeDependencies = {db: () => D1Database; now?: () => Date};
@@ -83,15 +84,18 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
    * makes it safe to call again for the same event: a replay adds nothing, and it fills in a
    * notice that a first attempt saved the action but did not live to create.
    */
-  async function enqueue(ownerId: string, source: NoticeSource, event: NoticeEvent, subject: Subject) {
+  async function enqueue(ownerId: string, source: NoticeSource, event: NoticeEvent, subject: Subject, directJid?: string) {
     const kind = noticeKindLabel(source, subject.kind);
     if (!kind) return;
     const values = readValues(subject.values_json);
     // A request sent under an earlier privacy text was told its content stays with management.
     // It never produces a notice, not even when it is closed after this feature went live.
-    if (!noticesDisclosed(source, values)) return;
-    const number = consentedWhatsapp(values), jid = number ? whatsappJid(number) : null;
-    const chat = await groupFor(ownerId, subject.property_id);
+    if (directJid
+      ? values.privacy_version !== INTAKE_WHATSAPP_PRIVACY_VERSION || values.privacy_accepted !== true
+      : !noticesDisclosed(source, values)) return;
+    const number = directJid ? null : consentedWhatsapp(values);
+    const jid = directJid ?? (number ? whatsappJid(number) : null);
+    const chat = directJid ? null : await groupFor(ownerId, subject.property_id);
     if (!chat && !jid) return;
 
     const now = clock(), nowIso = now.toISOString();
@@ -117,7 +121,7 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
        FROM (SELECT CASE ${limits.map(limit => `WHEN (${limit.count})>=? THEN ?`).join(' ')} END blocked) WHERE true
        ON CONFLICT(owner_id,source,event_key,target) DO NOTHING`,
       crypto.randomUUID(), ownerId, source, subject.id, subject.protocol, event, subject.event_id, target, chatId,
-      requesterJid, noticeBody(event, target, request), nowIso, nowIso,
+      requesterJid, noticeBody(event, target, request, !directJid), nowIso, nowIso,
       ...limits.flatMap(limit => [...limit.args, limit.max, limit.reason]));
     const recent = "AND status<>'cancelled' AND created_at>=?";
     // One batch: the requester's statement already counts the group notice queued just before it.
@@ -145,6 +149,14 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
     const subject = await first<Subject>(SUBJECT[source] + " AND r.protocol=? AND r.status<>'closed' AND e.revision=1 AND e.action='received'", ownerId, protocol);
     if (subject) await enqueue(ownerId, source, 'received', subject);
   });
+  /** A direct request authorizes a receipt to its verified sender only. */
+  const queueDirectReceipt = async (ownerId: string, protocol: string, senderJid: string) => {
+    if (!/^[1-9]\d{9,14}@c\.us$/.test(senderJid)) throw new Error('Destinatário direto inválido.');
+    const subject = await first<Subject>(SUBJECT.intake + ` AND r.protocol=? AND e.revision=1 AND e.action='received'
+      AND EXISTS (SELECT 1 FROM request_agent_intakes a WHERE a.owner_id=r.owner_id AND a.intake_id=r.id)`, ownerId, protocol);
+    if (!subject) throw new Error('Solicitação direta indisponível.');
+    await enqueue(ownerId, 'intake', 'received', subject, senderJid);
+  };
   /**
    * Call after a triage action was saved (or replayed) at `revision`. Only a close that is still
    * the request's latest event produces notices; closing again after a reopen is a new event.
@@ -230,5 +242,5 @@ export function createRequestNotices(d: RequestNoticeDependencies) {
     });
   }
 
-  return {queueReceived, queueClosed, sweepStatements, claimable, claimStatement, confirm, retentionStatement, list};
+  return {queueReceived, queueDirectReceipt, queueClosed, sweepStatements, claimable, claimStatement, confirm, retentionStatement, list};
 }

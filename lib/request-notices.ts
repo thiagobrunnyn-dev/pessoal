@@ -121,8 +121,11 @@ export function maskWhatsapp(value: unknown): string {
   if (typeof value !== 'string') return '';
   const digits = value.replace(/@.*$/, '').replace(/\D/g, '');
   const national = digits.length > 11 && digits.startsWith('55') ? digits.slice(2) : digits;
-  if (national.length !== 10 && national.length !== 11) return '';
-  return '(••) ' + '•'.repeat(national.length - 6) + '-' + national.slice(-4);
+  if (national.length === 10 || national.length === 11) {
+    return '(••) ' + '•'.repeat(national.length - 6) + '-' + national.slice(-4);
+  }
+  // Direct chats may use international E.164 numbers. Keep only the last four digits.
+  return /^[1-9]\d{9,14}$/.test(digits) ? '••••-' + digits.slice(-4) : '';
 }
 
 /** Copy of a stored form payload with the WhatsApp number masked, for management screens and the API. */
@@ -233,14 +236,14 @@ export type NoticeRequest = {
  * labelled as informed by the requester and passed through declaredText. Neither carries the
  * requester's identity or the closing note.
  */
-export function noticeBody(event: NoticeEvent, target: NoticeTarget, request: NoticeRequest): string {
+export function noticeBody(event: NoticeEvent, target: NoticeTarget, request: NoticeRequest, notifyOnClose = true): string {
   const property = plainLine(request.property, PROPERTY_LENGTH), subject = plainLine(request.subject, SUBJECT_LENGTH);
   const facts = [`Protocolo: *${plainLine(request.protocol, 40)}*`, 'Tipo: ' + request.kind, ...(subject ? ['Assunto: ' + subject] : []), ...(property ? ['Imóvel: ' + property] : [])];
   const dates = ['Recebida em ' + noticeDate(request.receivedAt), ...(event === 'closed' ? ['Encerrada em ' + noticeDate(request.closedAt || '')] : [])];
   const footer = '_Horário de Belém._';
   if (target === 'requester') {
     return event === 'received'
-      ? ['*MOBILIZA FACILITIES*', 'Recebemos a sua solicitação.', '', ...facts, ...dates, '', 'Você receberá outro aviso por aqui quando o atendimento for encerrado.', footer].join('\n')
+      ? ['*MOBILIZA FACILITIES*', 'Recebemos a sua solicitação.', '', ...facts, ...dates, ...(notifyOnClose ? ['', 'Você receberá outro aviso por aqui quando o atendimento for encerrado.'] : []), footer].join('\n')
       : ['*MOBILIZA FACILITIES*', 'O atendimento da sua solicitação foi encerrado.', '', ...facts, ...dates, footer].join('\n');
   }
   const place = declaredText(request.declaredPlace, PLACE_LENGTH);
